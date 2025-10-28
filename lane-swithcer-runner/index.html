@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Lane Switcher Runner</title>
+  <style>
+    :root { --bg: #071726; --fg: #e8f1ff; --accent: #5eead4; --danger: #f43f5e; --coin: #fbbf24; --dim: #6b7280; }
+    html, body { height: 100%; }
+    body { margin: 0; background: radial-gradient(1200px 800px at 50% -200px, #0a2640, var(--bg)); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, Apple Color Emoji, Segoe UI Emoji; display: grid; place-items: center; }
+
+    .frame { position: relative; width: min(92vw, 420px); aspect-ratio: 9 / 16; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.06); background: linear-gradient(180deg, rgba(94,234,212,0.04), rgba(0,0,0,0) 20%), #071726; }
+
+    canvas { width: 100%; height: 100%; display: block; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0)); }
+
+    .hud { position: absolute; inset: 0; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; gap: 8px; }
+
+    .pill { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; padding: 6px 10px; font-weight: 600; letter-spacing: 0.2px; backdrop-filter: blur(6px); }
+    .pill .label { color: var(--dim); font-weight: 600; margin-right: 6px; }
+
+    .overlay { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.3)); }
+    .card { pointer-events: auto; text-align: center; background: rgba(11,15,26,0.85); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 18px 16px; width: min(84%, 360px); box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .title { font-size: 18px; font-weight: 800; margin: 6px 0 6px; letter-spacing: 0.4px; }
+    .subtitle { color: var(--dim); font-size: 13px; line-height: 1.4; margin-bottom: 12px; }
+
+    .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .btn { cursor: pointer; user-select: none; pointer-events: auto; border: 1px solid rgba(255,255,255,0.12); background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)); color: var(--fg); padding: 10px 14px; border-radius: 12px; font-weight: 800; letter-spacing: 0.4px; transition: transform .06s ease, background .2s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn.primary { border-color: rgba(94,234,212,0.6); box-shadow: 0 0 24px rgba(94,234,212,0.25) inset, 0 0 16px rgba(94,234,212,0.15); }
+
+    .controls { margin-top: 10px; color: var(--dim); font-size: 12px; }
+
+    .bottom-hint { display: grid; place-items: center; padding: 10px; color: var(--dim); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="frame" id="frame">
+    <canvas id="game" width="360" height="640"></canvas>
+    <div class="hud">
+      <div class="topbar">
+        <div class="pill"><span class="label">SCORE</span><span id="score">0</span></div>
+        <div class="pill"><span class="label">BEST</span><span id="best">0</span></div>
+        <div class="pill"><span class="label">LIVES</span><span id="lives">3</span></div>
+      </div>
+      <div></div>
+      <div class="bottom-hint">Arrow keys or swipe to switch lanes</div>
+    </div>
+
+    <div class="overlay" id="overlay">
+      <div class="card">
+        <div class="title">Lane Switcher Runner</div>
+        <div class="subtitle">Steer your boat, dodge sharks, collect seashells, and survive as the seas get rougher.</div>
+        <div class="row">
+          <button class="btn primary" id="playBtn">Play</button>
+          <button class="btn" id="muteBtn">Sound: On</button>
+        </div>
+        <div class="controls">Controls: ← → or A D. On touch, swipe left/right.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const playBtn = document.getElementById('playBtn');
+  const muteBtn = document.getElementById('muteBtn');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const livesEl = document.getElementById('lives');
+
+  const W = canvas.width; // 360
+  const H = canvas.height; // 640
+
+  const LANES = 3;
+  const laneX = i => (W * (0.2 + 0.3 * i));
+
+  const player = { lane: 1, x: laneX(1), y: H - 140, w: 44, h: 44, targetX: laneX(1), vx: 0 };
+  const obstacles = [];
+  const coins = [];
+
+  let t = 0;
+  let running = false;
+  let gameOver = false;
+  let score = 0;
+  let lives = 3;
+  let invuln = 0;
+  let hitFlash = 0;
+  let best = Number(localStorage.getItem('lsr_best') || 0);
+  bestEl.textContent = best;
+
+  let speed = 180;
+  let spawnTimer = 0;
+  let coinTimer = 0;
+
+  let muted = false;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+  let bgmRunning = false;
+  let bgmTimer = null;
+  let bgmNextTime = 0;
+  let bgmStep = 0;
+  let bgmBpm = 132;
+  // Speech SFX
+  let speechReady = false;
+  let speechVoice = null;
+  let speakLast = 0;
+
+  function beep(type='square', freq=600, dur=0.06, gain=0.08) {
+    if (muted) return;
+    try {
+      if (!audioCtx) audioCtx = new AC();
+      const t0 = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      osc.type = type;
+      osc.frequency.value = freq;
+      const g = audioCtx.createGain();
+      g.gain.value = gain;
+      g.gain.setValueAtTime(g.gain.value, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(g).connect(audioCtx.destination);
+      osc.start();
+      osc.stop(t0 + dur);
+    } catch (e) {}
+  }
+
+  function ensureAC() {
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function initSpeech() {
+    if (!('speechSynthesis' in window)) return;
+    const pickVoice = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length) {
+        speechVoice = voices.find(v => /en/i.test(v.lang)) || voices[0];
+        speechReady = true;
+      }
+    };
+    pickVoice();
+    window.speechSynthesis.onvoiceschanged = pickVoice;
+  }
+
+  function sayGreat() {
+    if (muted) return;
+    if (!('speechSynthesis' in window)) return;
+    const nowT = performance.now();
+    if (nowT - speakLast < 700) return; // cooldown 0.7s
+    const u = new SpeechSynthesisUtterance('Great!');
+    if (speechVoice) u.voice = speechVoice;
+    u.rate = 1.15; u.pitch = 1.15; u.volume = 0.85;
+    try { window.speechSynthesis.speak(u); speakLast = nowT; } catch (e) {}
+  }
+
+  function ntf(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+  function pluck(freq, when, dur=0.12, gain=0.06, type='triangle') {
+    if (muted) return;
+    try {
+      ensureAC();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      const t0 = when;
+      const t1 = t0 + dur;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t1);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0);
+      o.stop(t1 + 0.01);
+    } catch (e) {}
+  }
+
+  function shaker(when, dur=0.04, gain=0.02) {
+    if (muted) return;
+    try {
+      ensureAC();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'square';
+      o.frequency.value = 800 + Math.random()*200;
+      const t0 = when;
+      const t1 = t0 + dur;
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t1);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0);
+      o.stop(t1 + 0.005);
+    } catch (e) {}
+  }
+
+  // brighter steel-drum-like pluck
+  function steel(freq, when, gain=0.05) {
+    if (muted) return;
+    try {
+      ensureAC();
+      const t0 = when;
+      const o1 = audioCtx.createOscillator(); o1.type = 'triangle'; o1.frequency.setValueAtTime(freq, t0);
+      const o2 = audioCtx.createOscillator(); o2.type = 'sine'; o2.frequency.setValueAtTime(freq*2, t0);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+      o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
+      o1.start(t0); o2.start(t0);
+      o1.stop(t0 + 0.22); o2.stop(t0 + 0.22);
+    } catch (e) {}
+  }
+
+  function bass(freq, when, gain=0.06) {
+    if (muted) return;
+    try {
+      ensureAC();
+      const t0 = when;
+      const o = audioCtx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(freq, t0);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0); o.stop(t0 + 0.25);
+    } catch (e) {}
+  }
+
+  function clave(when, gain=0.025) {
+    if (muted) return;
+    try {
+      ensureAC();
+      const t0 = when;
+      const o = audioCtx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(2000, t0);
+      const g = audioCtx.createGain();
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.03);
+      o.connect(g).connect(audioCtx.destination);
+      o.start(t0); o.stop(t0 + 0.04);
+    } catch (e) {}
+  }
+
+  function startBgm() {
+    if (bgmRunning || muted) return;
+    ensureAC();
+    bgmRunning = true;
+    const beat = 60 / bgmBpm;          // quarter note
+    const step = beat / 4;              // 16th note
+    bgmNextTime = audioCtx.currentTime + 0.05;
+    bgmStep = 0;
+
+    // I–IV–V–I progression in C for cheerful vibe
+    const chordSeq = [ [60,64,67], [65,69,72], [67,71,74], [60,64,67] ];
+
+    function schedule() {
+      const lookahead = 0.25;
+      while (bgmNextTime < audioCtx.currentTime + lookahead) {
+        const barStep = bgmStep % 16;              // 1 bar = 16 steps
+        const bar = Math.floor((bgmStep / 16)) % chordSeq.length;
+        const chord = chordSeq[bar];
+        const root = chord[0];
+
+        // Bass: pulse on 1 & offbeats: steps 0,4,8,12 and 2,6,10,14 quieter
+        const bassSteps = [0,4,8,12];
+        const offSteps = [2,6,10,14];
+        if (bassSteps.includes(barStep)) bass(ntf(root - 12), bgmNextTime, 0.06);
+        if (offSteps.includes(barStep)) bass(ntf(root - 12), bgmNextTime, 0.035);
+
+        // Steel lead: syncopated arps over chord tones
+        const arp = [chord[0]+12, chord[1]+12, chord[2]+12, chord[1]+12];
+        const steelSteps = [1,3,6,9,11,13,15];
+        if (steelSteps.includes(barStep)) {
+          const pick = arp[barStep % arp.length];
+          steel(ntf(pick), bgmNextTime, 0.05);
+        }
+
+        // Clave pattern (3-2): steps ~ [0,3,7,8,12]
+        const claveSteps = [0,3,7,8,12];
+        if (claveSteps.includes(barStep)) clave(bgmNextTime, 0.022);
+
+        // Shaker every 8th
+        if (barStep % 2 === 0) shaker(bgmNextTime, 0.03, 0.016);
+
+        bgmNextTime += step;
+        bgmStep++;
+      }
+    }
+
+    if (bgmTimer) clearInterval(bgmTimer);
+    bgmTimer = setInterval(schedule, 100);
+  }
+
+  function stopBgm() {
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = null; }
+    bgmRunning = false;
+  }
+
+  muteBtn.addEventListener('click', () => {
+    muted = !muted;
+    muteBtn.textContent = `Sound: ${muted ? 'Off' : 'On'}`;
+    if (muted) {
+      stopBgm();
+      if ('speechSynthesis' in window) try { window.speechSynthesis.cancel(); } catch (e) {}
+    } else {
+      startBgm();
+    }
+  });
+
+  function reset() {
+    obstacles.length = 0;
+    coins.length = 0;
+    player.lane = 1;
+    player.targetX = laneX(1);
+    player.x = player.targetX;
+    player.y = H - 140;
+    score = 0;
+    lives = 3;
+    invuln = 0;
+    hitFlash = 0;
+    t = 0;
+    speed = 180;
+    spawnTimer = 0;
+    coinTimer = 0;
+    gameOver = false;
+    if (livesEl) livesEl.textContent = lives;
+  }
+
+  function start() { reset(); running = true; overlay.style.display = 'none'; startBgm(); initSpeech(); }
+  function end() {
+    running = false; gameOver = true; overlay.style.display = 'grid';
+    overlay.querySelector('.title').textContent = 'Game Over';
+    overlay.querySelector('.subtitle').textContent = `Score: ${score}`;
+    playBtn.textContent = 'Retry';
+    if (score > best) { best = score; localStorage.setItem('lsr_best', best); bestEl.textContent = best; }
+  }
+
+  playBtn.addEventListener('click', () => { if (!running) start(); });
+
+  function moveLeft() { setLane(player.lane - 1); }
+  function moveRight() { setLane(player.lane + 1); }
+  function setLane(n) {
+    const clamped = Math.max(0, Math.min(LANES - 1, n));
+    if (clamped !== player.lane) {
+      player.lane = clamped;
+      player.targetX = laneX(clamped);
+      beep('square', 520, 0.05, 0.06);
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moveLeft();
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moveRight();
+    if ((e.key === ' ' || e.key === 'Spacebar') && !running) start();
+  });
+
+  let touchStartX = null;
+  let touchStartY = null;
+  const frame = document.getElementById('frame');
+  frame.addEventListener('touchstart', (e) => {
+    const t0 = e.changedTouches[0];
+    touchStartX = t0.clientX; touchStartY = t0.clientY;
+  }, { passive: true });
+  frame.addEventListener('touchend', (e) => {
+    const t1 = e.changedTouches[0];
+    const dx = t1.clientX - touchStartX; const dy = t1.clientY - touchStartY;
+    if (!running) { start(); return; }
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 24) {
+      if (dx < 0) moveLeft(); else moveRight();
+    }
+  }, { passive: true });
+
+  function trySpawn(dt) {
+    const difficulty = 1 + Math.min(1.5, t / 30);
+    const targetGap = 0.9 / difficulty;
+    spawnTimer += dt;
+    if (spawnTimer >= targetGap) {
+      spawnTimer = 0;
+      const lane = Math.floor(Math.random() * LANES);
+      const kind = Math.random() < 0.75 ? 'shark' : 'shark_double';
+      if (kind === 'shark') {
+        obstacles.push({ type: 'shark', lane, x: laneX(lane) - 30, y: -80, w: 60, h: 36, col: 'rgba(14,165,233,0.95)' });
+      } else {
+        const skip = lane;
+        for (let l=0; l<LANES; l++) {
+          if (l === skip) continue;
+          obstacles.push({ type: 'shark', lane: l, x: laneX(l) - 28, y: -80, w: 56, h: 34, col: 'rgba(14,165,233,0.9)' });
+        }
+      }
+    }
+
+    coinTimer += dt;
+    if (coinTimer >= 0.8) {
+      coinTimer = 0;
+      if (Math.random() < 0.6) {
+        const lane = Math.floor(Math.random() * LANES);
+        coins.push({ lane, x: laneX(lane) - 12, y: -40, w: 24, h: 24, a: 1 });
+      }
+    }
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    if (running) {
+      t += dt;
+      speed = 180 + t * 22;
+      trySpawn(dt);
+      update(dt);
+      score += Math.floor(dt * 10 + (dt * speed * 0.02));
+      scoreEl.textContent = score;
+    }
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt) {
+    if (invuln > 0) invuln = Math.max(0, invuln - dt);
+    if (hitFlash > 0) hitFlash = Math.max(0, hitFlash - dt);
+
+    const k = 14;
+    player.x += (player.targetX - player.x) * Math.min(1, k * dt);
+
+    const v = speed * dt;
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      o.y += v;
+      if (o.y - 2 > H) obstacles.splice(i, 1);
+    }
+    for (let i = coins.length - 1; i >= 0; i--) {
+      const c = coins[i];
+      c.y += v * 0.98;
+      c.a = 0.6 + 0.4 * Math.sin((now()*0.008) + i);
+      if (c.y - 2 > H) coins.splice(i, 1);
+    }
+
+    const px = player.x - player.w/2, py = player.y - player.h/2;
+    const pbox = { x: px + 6, y: py + 6, w: player.w - 12, h: player.h - 12 };
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      const o = obstacles[i];
+      const box = { x: o.x + 4, y: o.y + 4, w: o.w - 8, h: o.h - 8 };
+      if (intersect(pbox, box)) {
+        if (invuln <= 0) {
+          beep('sawtooth', 180, 0.12, 0.12);
+          lives -= 1;
+          if (livesEl) livesEl.textContent = Math.max(0, lives);
+          invuln = 1.1;
+          hitFlash = 0.5;
+          obstacles.splice(i, 1);
+          if (lives <= 0) {
+            end();
+            return;
+          }
+        }
+      }
+    }
+
+    for (let i = coins.length - 1; i >= 0; i--) {
+      const c = coins[i];
+      const box = { x: c.x + 2, y: c.y + 2, w: c.w - 4, h: c.h - 4 };
+      if (intersect(pbox, box)) {
+        coins.splice(i, 1);
+        score += 50;
+        beep('triangle', 900, 0.06, 0.09);
+        sayGreat();
+      }
+    }
+  }
+
+  function intersect(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+  function now() { return performance.now(); }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#6dd5ff');
+    grad.addColorStop(0.55, '#46c2ff');
+    grad.addColorStop(1, '#1c7ed6');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    const rays = 5;
+    for (let i=0; i<rays; i++) {
+      const spread = 0.22 + i*0.06;
+      const offset = (Math.sin(now()*0.0008 + i)*0.06);
+      ctx.beginPath();
+      ctx.moveTo(W*0.5, -40);
+      ctx.lineTo(W*(0.5 - spread + offset), H);
+      ctx.lineTo(W*(0.5 - spread*0.6 + offset*0.8), H);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(W*0.5, 0, W*0.5, H);
+      g.addColorStop(0, 'rgba(255,255,255,0.45)');
+      g.addColorStop(1, 'rgba(255,255,255,0.0)');
+      ctx.fillStyle = g;
+      ctx.fill();
+    }
+    ctx.restore();
+
+    const dashY = (now() * (speed * 0.08)) % 120;
+    ctx.lineWidth = 3;
+    const x1 = laneX(1), x0 = laneX(0), x2 = laneX(2);
+    const waveCols = ['rgba(255,255,255,0.22)','rgba(255,255,255,0.14)','rgba(255,255,255,0.22)'];
+    [x0, x1, x2].forEach((lx, idx) => {
+      ctx.strokeStyle = waveCols[idx % waveCols.length];
+      ctx.setLineDash([22, 26]);
+      ctx.lineDashOffset = dashY;
+      ctx.beginPath();
+      ctx.moveTo(lx, 0);
+      ctx.lineTo(lx, H);
+      ctx.stroke();
+    });
+
+    for (const c of coins) {
+      ctx.save();
+      ctx.globalAlpha = c.a ?? 1;
+      drawSeashell(ctx, c.x, c.y, c.w, c.h);
+      ctx.restore();
+    }
+
+    for (const o of obstacles) {
+      drawShark(ctx, o.x, o.y, o.w, o.h);
+    }
+
+    const px = player.x - player.w/2, py = player.y - player.h/2;
+    if (invuln > 0) {
+      const blink = (Math.sin(now()*0.04) * 0.5 + 0.5) * 0.6 + 0.2;
+      ctx.save();
+      ctx.globalAlpha = blink;
+      drawBoat(ctx, px, py, player.w, player.h);
+      ctx.restore();
+    } else {
+      drawBoat(ctx, px, py, player.w, player.h);
+    }
+
+    if (hitFlash > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(0.25, hitFlash*0.5)})`;
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function neonRect(ctx, x, y, w, h, col) {
+    ctx.save();
+    ctx.fillStyle = col;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 18;
+    ctx.fillRect(x, y, w, h);
+    ctx.restore();
+  }
+
+  function drawBoat(ctx, x, y, w, h) {
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(x + w/2, y + h, w*0.26, h*0.8, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    const hullH = h*0.52;
+    const hullY = y + h*0.48;
+    ctx.fillStyle = '#8b5e34';
+    ctx.shadowColor = 'rgba(139,94,52,0.7)';
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.moveTo(x + w*0.12, hullY);
+    ctx.quadraticCurveTo(x + w*0.50, hullY + hullH*0.85, x + w*0.88, hullY);
+    ctx.lineTo(x + w*0.88, hullY - hullH*0.55);
+    ctx.quadraticCurveTo(x + w*0.50, hullY - hullH*0.92, x + w*0.12, hullY - hullH*0.55);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#d4a373';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + w*0.16, hullY - hullH*0.55);
+    ctx.quadraticCurveTo(x + w*0.50, hullY - hullH*0.90, x + w*0.84, hullY - hullH*0.55);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e2e8f0';
+    const pY = hullY - hullH*0.28;
+    for (let i=0;i<3;i++) {
+      const px0 = x + w*(0.32 + i*0.16);
+      ctx.beginPath();
+      ctx.arc(px0, pY, Math.max(2, w*0.035), 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    const mastX = x + w*0.52;
+    const mastTop = y + h*0.06;
+    const mastBottom = y + h*0.48;
+    ctx.strokeStyle = '#b08968';
+    ctx.lineWidth = Math.max(2, w*0.04);
+    ctx.beginPath();
+    ctx.moveTo(mastX, mastTop);
+    ctx.lineTo(mastX, mastBottom);
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff4e6';
+    ctx.shadowColor = 'rgba(255,244,230,0.7)';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.moveTo(mastX, mastTop + h*0.06);
+    ctx.quadraticCurveTo(mastX + w*0.30, y + h*0.28, mastX, y + h*0.42);
+    ctx.lineTo(mastX, mastTop + h*0.06);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#ff6b6b';
+    ctx.beginPath();
+    ctx.moveTo(mastX, mastTop);
+    ctx.lineTo(mastX + w*0.16, mastTop + h*0.04);
+    ctx.lineTo(mastX, mastTop + h*0.08);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawSeashell(ctx, x, y, w, h) {
+    const cx = x + w/2, cy = y + h/2;
+    ctx.save();
+    const shellGrad = ctx.createRadialGradient(cx-2, cy-3, 2, cx, cy, Math.max(w,h)/2);
+    shellGrad.addColorStop(0, '#fff6');
+    shellGrad.addColorStop(1, '#ffd6a5');
+    ctx.fillStyle = shellGrad;
+    ctx.beginPath();
+    ctx.moveTo(cx, y);
+    ctx.quadraticCurveTo(x + w*0.9, y + h*0.15, x + w, y + h*0.6);
+    ctx.quadraticCurveTo(x + w*0.70, y + h*1.02, cx, y + h*0.92);
+    ctx.quadraticCurveTo(x + w*0.30, y + h*1.02, x, y + h*0.6);
+    ctx.quadraticCurveTo(x + w*0.10, y + h*0.15, cx, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 1.5;
+    for (let i=1;i<=4;i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx, y + h*0.06);
+      ctx.quadraticCurveTo(cx, cy, x + (w*(i/5)), y + h*0.88);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, y + h*0.06);
+      ctx.quadraticCurveTo(cx, cy, x + (w*(1 - i/5)), y + h*0.88);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawShark(ctx, x, y, w, h) {
+    ctx.save();
+    const cx = x + w/2, cy = y + h/2;
+    ctx.shadowColor = 'rgba(96,165,250,0.6)';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#5db0ff';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, w*0.5, h*0.5, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#e9f5ff';
+    ctx.beginPath();
+    ctx.moveTo(x + w*0.25, y + h*0.25);
+    ctx.quadraticCurveTo(cx, y + h*0.55, x + w*0.25, y + h*0.78);
+    ctx.quadraticCurveTo(cx, y + h*0.62, x + w*0.25, y + h*0.25);
+    ctx.closePath();
+    ctx.fill();
+
+    const mx = cx + w*0.08, my = y + h*0.30;
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#7a0d1a';
+    ctx.beginPath();
+    ctx.ellipse(mx, my, w*0.28, h*0.34, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ff8aa5';
+    ctx.beginPath();
+    ctx.ellipse(mx, my + h*0.10, w*0.18, h*0.14, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ffffff';
+    for (let i=0;i<7;i++) {
+      const t = (i/6 - 0.5) * Math.PI * 0.9;
+      const tx = mx + Math.cos(t) * w*0.20;
+      const ty = my - Math.sin(t) * h*0.22;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx + Math.cos(t+0.4)*w*0.05, ty - Math.sin(t+0.4)*h*0.06);
+      ctx.lineTo(tx + Math.cos(t-0.4)*w*0.05, ty - Math.sin(t-0.4)*h*0.06);
+      ctx.closePath();
+      ctx.fill();
+    }
+    for (let i=0;i<5;i++) {
+      const t = (i/4 - 0.5) * Math.PI * 0.7;
+      const tx = mx + Math.cos(t) * w*0.14;
+      const ty = my + Math.sin(t) * h*0.22;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx + Math.cos(t+0.5)*w*0.04, ty + Math.sin(t+0.5)*h*0.05);
+      ctx.lineTo(tx + Math.cos(t-0.5)*w*0.04, ty + Math.sin(t-0.5)*h*0.05);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.fillStyle = '#3b82f6';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.moveTo(cx - w*0.05, y + h*0.02);
+    ctx.lineTo(cx + w*0.18, y + h*0.35);
+    ctx.lineTo(cx - w*0.18, y + h*0.35);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#3b82f6';
+    ctx.beginPath();
+    ctx.moveTo(x + w*0.06, cy);
+    ctx.quadraticCurveTo(x - w*0.16, cy - h*0.30, x + w*0.04, cy - h*0.10);
+    ctx.quadraticCurveTo(x - w*0.16, cy + h*0.30, x + w*0.06, cy + h*0.06);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(cx + w*0.10, cy);
+    ctx.quadraticCurveTo(cx + w*0.28, cy + h*0.10, cx + w*0.14, cy + h*0.22);
+    ctx.lineTo(cx + w*0.04, cy + h*0.10);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    const ex = cx + w*0.22, ey = y + h*0.12, er = Math.max(2, w*0.08);
+    ctx.beginPath();
+    ctx.arc(ex, ey, er, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#0b1222';
+    ctx.beginPath();
+    ctx.arc(ex + w*0.02, ey + h*0.01, Math.max(1.5, w*0.035), 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(ex + w*0.05, ey - h*0.02, Math.max(0.8, w*0.015), 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
