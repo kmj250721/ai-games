@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Defense Photon 🚀</title>
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: radial-gradient(circle at center, #001a33, #000814);
+        overflow: hidden;
+    }
+    canvas {
+        display: block;
+        margin: 0 auto;
+        border: 1px solid #00ffff44;
+        background: radial-gradient(circle at center, #002244, #000);
+    }
+    #hud {
+        position: absolute;
+        top: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: #fff;
+        font-family: "Segoe UI", sans-serif;
+        font-size: 20px;
+        text-align: center;
+        user-select: none;
+    }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+    <span id="score">SCORE: 0</span> | 
+    <span id="level">LEVEL: 1</span> | 
+    <span>마우스 방향으로 클릭 발사!</span>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+// === 🖥️ 화면 크기 자동 조절 ===
+function resize() {
+    canvas.width = window.innerWidth * 0.9;
+    canvas.height = window.innerHeight * 0.9;
+}
+window.addEventListener('resize', resize);
+resize();
+
+let score = 0;
+let level = 1;
+let photonSpeed = 9;
+let shootCooldown = 400;
+let lastShot = 0;
+let multiShot = 1;
+let enemySpeed = 1.8;
+let spawnRate = 1800;
+let lastSpawn = 0;
+
+const player = {
+    x: canvas.width / 2,
+    y: canvas.height - 100,
+    r: 25,
+    color: "orange"
+};
+
+let photons = [];
+let enemies = [];
+
+// === 🔵 객체 그리기 ===
+function drawPlayer() {
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+    ctx.fillStyle = player.color;
+    ctx.fill();
+}
+
+function drawPhoton(p) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = "#00faff";
+    ctx.fill();
+}
+
+function drawEnemy(e) {
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+    ctx.fillStyle = "#3fa9ff";
+    ctx.fill();
+}
+
+// === 👾 적 생성 ===
+function spawnEnemy() {
+    const x = Math.random() * (canvas.width - 60) + 30;
+    enemies.push({ x, y: -20, r: 20, vy: enemySpeed });
+}
+
+// === 🔫 발사 ===
+function shoot(e) {
+    const now = Date.now();
+    if (now - lastShot < shootCooldown) return;
+    lastShot = now;
+
+    // 마우스 클릭 위치 계산
+    const rect = canvas.getBoundingClientRect();
+    const targetX = e.clientX - rect.left;
+    const targetY = e.clientY - rect.top;
+    const dx = targetX - player.x;
+    const dy = targetY - player.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const dirX = dx / len;
+    const dirY = dy / len;
+
+    // 멀티샷
+    const spread = 0.2; // 각도 간격
+    for (let i = 0; i < multiShot; i++) {
+        const angleOffset = (i - (multiShot - 1) / 2) * spread;
+        const cos = Math.cos(angleOffset);
+        const sin = Math.sin(angleOffset);
+
+        photons.push({
+            x: player.x,
+            y: player.y - 20,
+            vx: (dirX * cos - dirY * sin) * photonSpeed,
+            vy: (dirY * cos + dirX * sin) * photonSpeed
+        });
+    }
+}
+
+// === ⚙️ 업데이트 ===
+function update() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawPlayer();
+
+    // 포톤 이동
+    photons = photons.filter(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        drawPhoton(p);
+        return p.x > -10 && p.x < canvas.width + 10 && p.y > -10 && p.y < canvas.height + 10;
+    });
+
+    // 적 이동
+    enemies = enemies.filter(e => {
+        e.y += e.vy;
+        drawEnemy(e);
+
+        // 충돌 판정 (포톤 vs 적)
+        for (let j = 0; j < photons.length; j++) {
+            const p = photons[j];
+            const dx = p.x - e.x;
+            const dy = p.y - e.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < e.r + 6) {
+                photons.splice(j, 1);
+                score++;
+                if (score % 10 === 0) levelUp();
+                document.getElementById("score").textContent = "SCORE: " + score;
+                return false;
+            }
+        }
+
+        // 플레이어 충돌
+        const dx = player.x - e.x;
+        const dy = player.y - e.y;
+        if (Math.sqrt(dx * dx + dy * dy) < player.r + e.r) {
+            alert(`💀 GAME OVER\nSCORE: ${score}`);
+            document.location.reload();
+        }
+
+        return e.y < canvas.height + e.r;
+    });
+
+    // 적 생성
+    if (Date.now() - lastSpawn > spawnRate) {
+        spawnEnemy();
+        lastSpawn = Date.now();
+    }
+
+    requestAnimationFrame(update);
+}
+
+function levelUp() {
+    level++;
+    document.getElementById("level").textContent = "LEVEL: " + level;
+
+    // 레벨마다 강화
+    if (level % 2 === 0 && multiShot < 3) multiShot++;
+    else photonSpeed += 0.5;
+
+    enemySpeed += 0.3;
+    spawnRate = Math.max(800, spawnRate - 100);
+    shootCooldown = Math.max(250, shootCooldown - 20);
+}
+
+// === 이벤트 등록 ===
+canvas.addEventListener("click", shoot);
+update();
+</script>
+</body>
+</html>
