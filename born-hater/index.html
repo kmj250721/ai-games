@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Born Hater - Slice 'n Score</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* 초기 설정 화면 */
+        .setup-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .setup-content {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 800px;
+            width: 90%;
+            max-height: 95vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .setup-title {
+            text-align: center;
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .title-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .music-icon-btn {
+            position: absolute;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .music-icon-btn:hover {
+            background: #45b7b8;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .music-icon-btn.playing {
+            background: #e74c3c;
+        }
+
+        .help-button {
+            position: absolute;
+            right: 0;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .help-button:hover {
+            background: #45b7b8;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .image-item {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .image-item.dragover {
+            border-color: #4ecdc4;
+            background-color: rgba(78, 205, 196, 0.1);
+        }
+
+        .image-item.has-image {
+            border-color: #4ecdc4;
+            border-style: solid;
+        }
+
+        .image-preview {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        .image-preview.show {
+            display: block;
+        }
+
+        .image-item.has-image .emoji-display {
+            display: none;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .emoji-display {
+            font-size: 60px;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-button {
+            padding: 8px 16px;
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .upload-button:hover {
+            background: #45b7b8;
+        }
+
+        .ment-input {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-top: 10px;
+            display: block;
+        }
+
+        .points-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .size-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(78, 205, 196, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .start-button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        .start-button:hover {
+            transform: scale(1.05);
+        }
+
+        .start-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .music-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .music-title {
+            font-size: 1.2em;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .music-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .music-input:focus {
+            border-color: #4ecdc4;
+            outline: none;
+        }
+
+        .music-info {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .volume-control {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .play-music-btn {
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .play-music-btn:hover {
+            background: #45b7b8;
+        }
+
+        .play-music-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .volume-control label {
+            font-size: 14px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        .volume-control input[type="range"] {
+            flex: 1;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .volume-control input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        #volumeValue {
+            font-size: 12px;
+            color: #666;
+            font-weight: bold;
+            min-width: 35px;
+        }
+
+        /* 게임 화면 */
+        .game-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            z-index: 100;
+        }
+
+        .timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            z-index: 100;
+        }
+
+        .message-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message-display.show {
+            opacity: 1;
+        }
+
+        .points-earned {
+            background: rgba(255, 107, 107, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        /* 게임 종료 화면 */
+        .end-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .end-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .end-title {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .score-summary {
+            margin-bottom: 30px;
+        }
+
+        .total-score {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-bottom: 20px;
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .score-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .score-card-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 10px;
+            display: block;
+        }
+
+        .score-card-info {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .score-card-count {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .restart-button {
+            padding: 15px 30px;
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .restart-button:hover {
+            transform: scale(1.05);
+        }
+
+        /* 게임 룰 모달 */
+        .rules-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .rules-content {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            max-width: 700px;
+            width: 90%;
+            max-height: 85vh;
+            position: relative;
+        }
+
+        .rules-title {
+            font-size: 1.6em;
+            margin-bottom: 15px;
+            color: #333;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .rules-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .rules-section {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .rules-section h3 {
+            color: #4ecdc4;
+            font-size: 1em;
+            margin-bottom: 6px;
+            font-weight: bold;
+        }
+
+        .rules-section p {
+            color: #666;
+            line-height: 1.4;
+            margin: 0;
+            font-size: 13px;
+        }
+
+        .close-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .close-button:hover {
+            background: #ee5a24;
+        }
+
+        /* 음악 모달 */
+        .music-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .music-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .music-modal-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .music-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .music-url-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .music-url-input:focus {
+            border-color: #4ecdc4;
+        }
+
+        .play-music-btn {
+            background: #4ecdc4;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .play-music-btn:hover:not(:disabled) {
+            background: #45b7b8;
+        }
+
+        .play-music-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .music-info {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .music-status {
+            font-size: 14px;
+            color: #4ecdc4;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* 모바일 최적화 */
+        @media (max-width: 768px) {
+            .setup-content {
+                padding: 15px;
+                margin: 5px;
+                max-height: 98vh;
+            }
+            
+            .setup-title {
+                font-size: 1.8em;
+                margin-bottom: 15px;
+            }
+            
+            .image-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .image-item {
+                min-height: 180px;
+                padding: 12px;
+            }
+            
+            .image-preview {
+                width: 80px;
+                height: 80px;
+            }
+            
+            .emoji-display {
+                font-size: 50px;
+            }
+            
+            .upload-text {
+                font-size: 11px;
+            }
+            
+            .upload-button {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+            
+            .ment-input {
+                padding: 6px;
+                font-size: 11px;
+            }
+            
+            .start-button {
+                padding: 10px;
+                font-size: 14px;
+                margin-top: 10px;
+            }
+            
+            .game-ui, .timer {
+                font-size: 20px;
+            }
+            
+            .message-display {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 초기 설정 화면 -->
+        <div class="setup-screen" id="setupScreen">
+            <div class="setup-content">
+                <div class="title-container">
+                    <button class="music-icon-btn" onclick="showMusicModal()" title="Add Background Music">🎵</button>
+                    <h1 class="setup-title">Born Hater</h1>
+                    <button class="help-button" onclick="showGameRules()" title="View Game Rules">?</button>
+                </div>
+                
+                <div class="image-grid" id="imageGrid">
+                    <div class="image-item" data-rank="1">
+                        <div class="points-display">50pts</div>
+                        <div class="size-display">30px</div>
+                        <img class="image-preview" alt="Image 1">
+                        <div class="emoji-display">🐍</div>
+                        <div class="upload-text">Drag or click to customize</div>
+                        <input type="file" class="file-input" accept="image/*" data-rank="1">
+                        <button class="upload-button" onclick="document.querySelector('input[data-rank=&quot;1&quot;]').click()">Customize</button>
+                        <input type="text" class="ment-input" placeholder="Enter message to display when eliminated" data-rank="1" value="Got 'em!">
+                    </div>
+                    <div class="image-item" data-rank="2">
+                        <div class="points-display">40pts</div>
+                        <div class="size-display">40px</div>
+                        <img class="image-preview" alt="Image 2">
+                        <div class="emoji-display">🕷️</div>
+                        <div class="upload-text">Drag or click to customize</div>
+                        <input type="file" class="file-input" accept="image/*" data-rank="2">
+                        <button class="upload-button" onclick="this.parentElement.querySelector('.file-input').click()">Customize</button>
+                        <input type="text" class="ment-input" placeholder="Enter message to display when eliminated" data-rank="2" value="Squashed!">
+                    </div>
+                    <div class="image-item" data-rank="3">
+                        <div class="points-display">30pts</div>
+                        <div class="size-display">50px</div>
+                        <img class="image-preview" alt="Image 3">
+                        <div class="emoji-display">🪱</div>
+                        <div class="upload-text">Drag or click to customize</div>
+                        <input type="file" class="file-input" accept="image/*" data-rank="3">
+                        <button class="upload-button" onclick="this.parentElement.querySelector('.file-input').click()">Customize</button>
+                        <input type="text" class="ment-input" placeholder="Enter message to display when eliminated" data-rank="3" value="Done!">
+                    </div>
+                    <div class="image-item" data-rank="4">
+                        <div class="points-display">20pts</div>
+                        <div class="size-display">60px</div>
+                        <img class="image-preview" alt="Image 4">
+                        <div class="emoji-display">🦗</div>
+                        <div class="upload-text">Drag or click to customize</div>
+                        <input type="file" class="file-input" accept="image/*" data-rank="4">
+                        <button class="upload-button" onclick="this.parentElement.querySelector('.file-input').click()">Customize</button>
+                        <input type="text" class="ment-input" placeholder="Enter message to display when eliminated" data-rank="4" value="Bye!">
+                    </div>
+                    <div class="image-item" data-rank="5">
+                        <div class="points-display">10pts</div>
+                        <div class="size-display">70px</div>
+                        <img class="image-preview" alt="Image 5">
+                        <div class="emoji-display">💩</div>
+                        <div class="upload-text">Drag or click to customize</div>
+                        <input type="file" class="file-input" accept="image/*" data-rank="5">
+                        <button class="upload-button" onclick="this.parentElement.querySelector('.file-input').click()">Customize</button>
+                        <input type="text" class="ment-input" placeholder="Enter message to display when eliminated" data-rank="5" value="Oops!">
+                    </div>
+                </div>
+
+                <button class="start-button" id="startButton" onclick="startGame()" disabled>Start Game</button>
+            </div>
+        </div>
+
+        <!-- 게임 화면 -->
+        <div class="game-screen" id="gameScreen">
+            <canvas id="gameCanvas"></canvas>
+            <div class="game-ui" id="scoreDisplay">Score: 0</div>
+            <div class="timer" id="timer">60</div>
+            <div class="message-display" id="messageDisplay"></div>
+        </div>
+
+        <!-- 게임 종료 화면 -->
+        <div class="end-screen" id="endScreen">
+            <div class="end-content">
+                <h1 class="end-title">Game Over!</h1>
+                <div class="score-summary" id="scoreSummary"></div>
+                <button class="restart-button" onclick="restartGame()">Play Again</button>
+            </div>
+        </div>
+
+        <!-- 게임 룰 모달 -->
+        <div class="rules-modal" id="rulesModal">
+            <div class="rules-content">
+                <button class="close-button" onclick="hideGameRules()">×</button>
+                <h1 class="rules-title">Game Rules</h1>
+                
+                <div class="rules-grid">
+                    <div class="rules-section">
+                        <h3>🎯 Objective</h3>
+                        <p>Slice shapes with mouse to earn points!</p>
+                    </div>
+
+                    <div class="rules-section">
+                        <h3>🎮 Controls</h3>
+                        <p><strong>Mouse Drag</strong>: Slice shapes<br>
+                        <strong>Right-click</strong>: Trail effect</p>
+                    </div>
+
+                    <div class="rules-section">
+                        <h3>⭐ Scoring</h3>
+                        <p>Rank 1: 50pts (smallest)<br>
+                        Rank 2: 40pts → Rank 5: 10pts (largest)</p>
+                    </div>
+
+                    <div class="rules-section">
+                        <h3>⏰ Time</h3>
+                        <p>60 seconds to score maximum points!</p>
+                    </div>
+
+                    <div class="rules-section">
+                        <h3>🎨 Customize</h3>
+                        <p>Upload images & set messages for each shape</p>
+                    </div>
+
+                    <div class="rules-section">
+                        <h3>💡 Tips</h3>
+                        <p>Smaller = harder but more points!<br>
+                        Slice before they disappear!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- 음악 설정 모달 -->
+        <div class="music-modal" id="musicModal">
+            <div class="music-modal-content">
+                <h3 class="music-modal-title">Background Music</h3>
+                <div class="music-input-group">
+                    <input type="url" class="music-url-input" id="musicUrl" placeholder="Enter YouTube URL">
+                    <button class="play-music-btn" id="playMusicBtn" disabled>▶ Play</button>
+                </div>
+                <div class="music-info">Paste a YouTube URL to play music during the game</div>
+                <div class="music-status" id="musicStatus"></div>
+                <button class="close-button" onclick="hideMusicModal()">×</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 게임 상수
+        const MAX_HEIGHT_RANGE = 0.6; // 화면 높이의 60%까지 올라갈 수 있음
+
+        // 게임 상태
+        let gameState = {
+            isPlaying: false,
+            score: 0,
+            timeLeft: 60,
+            shapes: [],
+            gameData: null,
+            canvas: null,
+            ctx: null,
+            animationId: null,
+            audioContext: null,
+            audioSource: null,
+            shapeStats: {}, // 각 도형별 통계
+            musicUrl: null,
+            musicPlayer: null,
+            isMusicMuted: false,
+            volume: 50
+        };
+
+        // 도형 클래스
+        class Shape {
+            constructor(image, ment, rank, startX, startY, targetX, targetY) {
+                this.image = image;
+                this.ment = ment;
+                this.rank = rank;
+                this.x = startX;
+                this.y = startY;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                
+                // 포물선 운동을 위한 초기 속도 계산
+                const dx = targetX - startX;
+                const dy = targetY - startY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const speed = (6 - rank) * 0.5 + 2; // 순위가 높을수록 빠름
+                
+                this.vx = (dx / distance) * speed;
+                this.vy = (dy / distance) * speed;
+                this.gravity = 0.1;
+                
+                this.size = 30 + (rank - 1) * 10; // 순위가 높을수록 작음 (1순위: 30px, 5순위: 70px)
+                this.points = (6 - rank) * 10; // 순위가 높을수록 높은 점수
+                this.isCut = false;
+                this.cutTime = 0;
+                this.maxHeight = gameState.canvas.height * MAX_HEIGHT_RANGE;
+            }
+
+            update() {
+                if (!this.isCut) {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vy += this.gravity;
+                } else {
+                    this.cutTime++;
+                }
+            }
+
+            draw(ctx) {
+                if (!this.isCut) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    
+                    // 1. 원형 배경 그리기
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = '#4ecdc4';
+                    ctx.fill();
+                    
+                    // 2. 원형 테두리 그리기 (선택사항)
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // 3. 이미지를 원형 배경 위에 그리기 (원형 마스크 적용)
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+                    ctx.clip();
+                    
+                    // 이미지 크기 계산 (원형 영역의 80% 크기로 조정)
+                    const imageSize = this.size * 0.8;
+                    const aspectRatio = this.image.width / this.image.height;
+                    let drawWidth, drawHeight, offsetX, offsetY;
+                    
+                    if (aspectRatio > 1) {
+                        // 가로가 더 긴 경우
+                        drawWidth = imageSize;
+                        drawHeight = imageSize / aspectRatio;
+                    } else {
+                        // 세로가 더 긴 경우
+                        drawHeight = imageSize;
+                        drawWidth = imageSize * aspectRatio;
+                    }
+                    
+                    // 이미지를 원형의 정중앙에 배치
+                    offsetX = -drawWidth / 2;
+                    offsetY = -drawHeight / 2;
+                    
+                    ctx.drawImage(this.image, offsetX, offsetY, drawWidth, drawHeight);
+                    ctx.restore();
+                    ctx.restore();
+                }
+            }
+
+            isOffScreen() {
+                return this.y > gameState.canvas.height + 50 || this.x < -50 || this.x > gameState.canvas.width + 50;
+            }
+        }
+
+        // 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSetup();
+            initializeMusicInput();
+        });
+
+        // 음악 모달 표시
+        function showMusicModal() {
+            document.getElementById('musicModal').style.display = 'flex';
+        }
+
+        // 음악 모달 숨기기
+        function hideMusicModal() {
+            document.getElementById('musicModal').style.display = 'none';
+        }
+
+        // 음악 입력 필드 초기화
+        function initializeMusicInput() {
+            const musicInput = document.getElementById('musicUrl');
+            const playMusicBtn = document.getElementById('playMusicBtn');
+            const musicStatus = document.getElementById('musicStatus');
+            const musicIconBtn = document.querySelector('.music-icon-btn');
+
+            // URL 입력 시 음악 준비
+            musicInput.addEventListener('input', function() {
+                const url = this.value.trim();
+                if (url && isValidYouTubeUrl(url)) {
+                    startBackgroundMusic(url);
+                    playMusicBtn.disabled = false;
+                    playMusicBtn.textContent = '▶ Play';
+                    musicStatus.textContent = 'Ready to play!';
+                    musicIconBtn.classList.add('playing');
+                } else {
+                    stopBackgroundMusic();
+                    playMusicBtn.disabled = true;
+                    playMusicBtn.textContent = '▶ Play';
+                    musicStatus.textContent = '';
+                    musicIconBtn.classList.remove('playing');
+                }
+            });
+
+            // 재생 버튼 클릭
+            playMusicBtn.addEventListener('click', function() {
+                if (gameState.musicPlayer) {
+                    gameState.musicPlayer.play();
+                    this.textContent = '⏸ Playing';
+                    this.disabled = true;
+                    musicStatus.textContent = 'Music is playing!';
+                    setTimeout(() => {
+                        this.disabled = false;
+                        this.textContent = '▶ Play';
+                        musicStatus.textContent = 'Music loaded successfully!';
+                    }, 2000);
+                }
+            });
+
+            // 모달 외부 클릭 시 닫기
+            document.getElementById('musicModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    hideMusicModal();
+                }
+            });
+
+            // ESC 키로 모달 닫기
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    hideMusicModal();
+                }
+            });
+        }
+
+        // 유튜브 URL 유효성 검사
+        function isValidYouTubeUrl(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11);
+        }
+
+        // 배경 음악 시작
+        function startBackgroundMusic(url) {
+            try {
+                const videoId = extractYouTubeVideoId(url);
+                if (!videoId) {
+                    console.log('Invalid YouTube URL:', url);
+                    return;
+                }
+
+                // 기존 플레이어가 있으면 제거
+                if (gameState.musicPlayer) {
+                    stopBackgroundMusic();
+                }
+
+                // 숨겨진 iframe 생성 (autoplay 제거하고 수동 재생)
+                const iframe = document.createElement('iframe');
+                iframe.src = `https://www.youtube.com/embed/${videoId}?controls=0&disablekb=1&fs=0&modestbranding=1&playsinline=1&rel=0&showinfo=0&loop=1&playlist=${videoId}&enablejsapi=1`;
+                iframe.style.display = 'none';
+                iframe.width = '0';
+                iframe.height = '0';
+                iframe.id = 'backgroundMusicPlayer';
+                iframe.allow = 'autoplay; encrypted-media';
+                document.body.appendChild(iframe);
+
+                // iframe 로드 완료 후 재생 시도
+                iframe.onload = function() {
+                    console.log('YouTube iframe loaded, attempting to play...');
+                    // 약간의 지연 후 재생 시도 (브라우저 정책 때문)
+                    setTimeout(() => {
+                        tryPlayMusic(iframe, videoId);
+                    }, 1000);
+                };
+
+                gameState.musicPlayer = {
+                    iframe: iframe,
+                    videoId: videoId,
+                    mute: () => {
+                        iframe.src = iframe.src.replace('&mute=0', '') + '&mute=1';
+                    },
+                    unMute: () => {
+                        iframe.src = iframe.src.replace('&mute=1', '') + '&mute=0';
+                    },
+                    pause: () => {
+                        iframe.src = iframe.src.replace('&autoplay=1', '');
+                    },
+                    play: () => {
+                        tryPlayMusic(iframe, videoId);
+                    }
+                };
+
+                gameState.musicUrl = url;
+                console.log('Background music iframe created for:', url);
+
+            } catch (error) {
+                console.log('Error starting background music:', error);
+            }
+        }
+
+        // 음악 재생 시도
+        function tryPlayMusic(iframe, videoId) {
+            try {
+                // autoplay 파라미터를 추가하여 재생 시도
+                const currentSrc = iframe.src;
+                if (!currentSrc.includes('autoplay=1')) {
+                    iframe.src = currentSrc + '&autoplay=1';
+                }
+                console.log('Attempting to play music with autoplay=1');
+            } catch (error) {
+                console.log('Error trying to play music:', error);
+            }
+        }
+
+        // 배경 음악 중지
+        function stopBackgroundMusic() {
+            if (gameState.musicPlayer && gameState.musicPlayer.iframe) {
+                gameState.musicPlayer.iframe.remove();
+                gameState.musicPlayer = null;
+                gameState.musicUrl = null;
+            }
+        }
+
+        // 유튜브 URL에서 비디오 ID 추출
+        function extractYouTubeVideoId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+
+        // 설정 화면 초기화
+        function initializeSetup() {
+            // 드래그 앤 드롭 이벤트 설정
+            const imageItems = document.querySelectorAll('.image-item');
+            imageItems.forEach(item => {
+                const rank = item.dataset.rank;
+                const fileInput = item.querySelector('.file-input');
+                const preview = item.querySelector('.image-preview');
+                const mentInput = item.querySelector('.ment-input');
+                const uploadText = item.querySelector('.upload-text');
+
+                // 드래그 이벤트
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    item.classList.add('dragover');
+                });
+
+                item.addEventListener('dragleave', () => {
+                    item.classList.remove('dragover');
+                });
+
+                item.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    item.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        handleFileUpload(files[0], rank);
+                    }
+                });
+
+                // 파일 선택 이벤트
+                fileInput.addEventListener('change', (e) => {
+                    if (e.target.files.length > 0) {
+                        handleFileUpload(e.target.files[0], rank);
+                    }
+                });
+            });
+
+            // 초기 상태 체크 - 이제 기본 이모지로 게임 시작 가능
+            checkAllImagesReady();
+        }
+
+        // 파일 업로드 처리
+        function handleFileUpload(file, rank) {
+            if (!file.type.startsWith('image/')) {
+                alert('Only image files are allowed.');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const item = document.querySelector(`[data-rank="${rank}"]`);
+                    const preview = item.querySelector('.image-preview');
+                    const mentInput = item.querySelector('.ment-input');
+                    const uploadText = item.querySelector('.upload-text');
+                    const uploadButton = item.querySelector('.upload-button');
+
+                    preview.src = e.target.result;
+                    preview.classList.add('show');
+                    uploadText.style.display = 'none';
+                    uploadButton.style.display = 'none';
+                    item.classList.add('has-image');
+                    
+                    // 파일 객체를 데이터 속성에 저장
+                    item.dataset.file = JSON.stringify({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size
+                    });
+
+                    checkAllImagesReady();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 모든 이미지가 준비되었는지 확인
+        function checkAllImagesReady() {
+            const allItems = document.querySelectorAll('.image-item');
+            let allReady = true;
+
+            allItems.forEach(item => {
+                const mentInput = item.querySelector('.ment-input');
+                if (!mentInput.value.trim()) {
+                    allReady = false;
+                }
+            });
+
+            const startButton = document.getElementById('startButton');
+            startButton.disabled = !allReady;
+        }
+
+        // 멘트 입력 이벤트 리스너 추가
+        document.addEventListener('input', function(e) {
+            if (e.target.classList.contains('ment-input')) {
+                checkAllImagesReady();
+            }
+        });
+
+        // 이모지 버튼으로도 게임 시작 가능하도록 체크
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAllImagesReady();
+        });
+
+        // 게임 시작
+        function startGame() {
+            const gameData = {
+                shapes: [],
+                musicUrl: null // 음악 기능 제거
+            };
+
+            // 도형 데이터 수집
+            for (let i = 1; i <= 5; i++) {
+                const item = document.querySelector(`[data-rank="${i}"]`);
+                const preview = item.querySelector('.image-preview');
+                const mentInput = item.querySelector('.ment-input');
+                const emojiDisplay = item.querySelector('.emoji-display');
+
+                const img = new Image();
+                const shapeData = {
+                    ment: mentInput.value.trim(),
+                    rank: i
+                };
+
+                // 커스텀 이미지가 있으면 사용, 없으면 이모지를 캔버스로 변환
+                if (preview.classList.contains('show')) {
+                    img.onload = function() {
+                        shapeData.image = img;
+                        gameData.shapes.push(shapeData);
+                        
+                        if (gameData.shapes.length === 5) {
+                            initializeGame(gameData);
+                        }
+                    };
+                    img.src = preview.src;
+                } else {
+                    // 이모지를 캔버스로 변환 (배경 없이 이모지만)
+                    const emoji = emojiDisplay.textContent;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 128;
+                    canvas.height = 128;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 이모지를 캔버스 중앙에 그리기
+                    ctx.font = '100px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(emoji, 64, 64);
+                    
+                    const dataUrl = canvas.toDataURL();
+                    img.onload = function() {
+                        shapeData.image = img;
+                        gameData.shapes.push(shapeData);
+                        
+                        if (gameData.shapes.length === 5) {
+                            initializeGame(gameData);
+                        }
+                    };
+                    img.src = dataUrl;
+                }
+            }
+        }
+
+        // 게임 초기화
+        function initializeGame(data) {
+            gameState.gameData = data;
+            gameState.canvas = document.getElementById('gameCanvas');
+            gameState.ctx = gameState.canvas.getContext('2d');
+            
+            // 통계 초기화
+            gameState.shapeStats = {};
+            data.shapes.forEach(shapeData => {
+                gameState.shapeStats[shapeData.rank] = {
+                    count: 0,
+                    points: 0,
+                    image: shapeData.image,
+                    ment: shapeData.ment
+                };
+            });
+            
+            // 캔버스 크기 설정
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // 화면 전환
+            document.getElementById('setupScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'block';
+
+            // 게임 시작
+            gameState.isPlaying = true;
+            gameState.score = 0;
+            gameState.timeLeft = 60;
+            gameState.shapes = [];
+
+            // 타이머 시작
+            const timer = setInterval(() => {
+                gameState.timeLeft--;
+                document.getElementById('timer').textContent = gameState.timeLeft;
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(timer);
+                    endGame();
+                }
+            }, 1000);
+
+            // 게임 루프 시작
+            gameLoop();
+        }
+
+        // 캔버스 크기 조정
+        function resizeCanvas() {
+            gameState.canvas.width = window.innerWidth;
+            gameState.canvas.height = window.innerHeight;
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            if (!gameState.isPlaying) return;
+
+            // 캔버스 클리어
+            gameState.ctx.clearRect(0, 0, gameState.canvas.width, gameState.canvas.height);
+
+            // 도형 생성 (랜덤)
+            if (Math.random() < 0.02) {
+                const shapeData = gameState.gameData.shapes[Math.floor(Math.random() * gameState.gameData.shapes.length)];
+                
+                // 랜덤한 가장자리에서 시작
+                const edge = Math.floor(Math.random() * 3); // 0: 좌측, 1: 우측, 2: 하단
+                let startX, startY, targetX, targetY;
+                
+                switch (edge) {
+                    case 0: // 좌측 가장자리
+                        startX = -50;
+                        startY = Math.random() * gameState.canvas.height;
+                        targetX = gameState.canvas.width + 50;
+                        targetY = Math.random() * gameState.canvas.height * MAX_HEIGHT_RANGE;
+                        break;
+                    case 1: // 우측 가장자리
+                        startX = gameState.canvas.width + 50;
+                        startY = Math.random() * gameState.canvas.height;
+                        targetX = -50;
+                        targetY = Math.random() * gameState.canvas.height * MAX_HEIGHT_RANGE;
+                        break;
+                    case 2: // 하단 가장자리
+                        startX = Math.random() * gameState.canvas.width;
+                        startY = gameState.canvas.height + 50;
+                        targetX = Math.random() * gameState.canvas.width;
+                        targetY = Math.random() * gameState.canvas.height * MAX_HEIGHT_RANGE;
+                        break;
+                }
+                
+                gameState.shapes.push(new Shape(
+                    shapeData.image,
+                    shapeData.ment,
+                    shapeData.rank,
+                    startX, startY,
+                    targetX, targetY
+                ));
+            }
+
+            // 도형 업데이트 및 그리기
+            gameState.shapes = gameState.shapes.filter(shape => {
+                shape.update();
+                shape.draw(gameState.ctx);
+                return !shape.isOffScreen() && shape.cutTime < 60;
+            });
+
+            // 드래그 궤적 그리기 (도형 위에)
+            drawDragTrail();
+
+            // 트레일 효과 그리기 (최상위, 우클릭 중일 때)
+            if (isDragging && isRightClick) {
+                drawTrail();
+            }
+
+            // 점수 업데이트
+            document.getElementById('scoreDisplay').textContent = `Score: ${gameState.score}`;
+
+            gameState.animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // 마우스/터치 이벤트 처리
+        let isDragging = false;
+        let isRightClick = false;
+        let lastX = 0;
+        let lastY = 0;
+        let trailPoints = [];
+        let dragTrail = []; // 좌클릭 드래그 궤적 저장
+
+        function initializeGameEvents() {
+            gameState.canvas.addEventListener('mousedown', startDrag);
+            gameState.canvas.addEventListener('mousemove', drag);
+            gameState.canvas.addEventListener('mouseup', endDrag);
+            gameState.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            gameState.canvas.addEventListener('touchstart', startDrag);
+            gameState.canvas.addEventListener('touchmove', drag);
+            gameState.canvas.addEventListener('touchend', endDrag);
+        }
+
+        function startDrag(e) {
+            const rect = gameState.canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            lastX = clientX - rect.left;
+            lastY = clientY - rect.top;
+            
+            // 우클릭 감지
+            if (e.button === 2 || e.which === 3) {
+                isRightClick = true;
+                isDragging = true;
+                trailPoints = [{x: lastX, y: lastY, time: Date.now()}];
+            } else if (e.button === 0 || e.which === 1 || e.touches) {
+                isRightClick = false;
+                isDragging = true;
+                trailPoints = [{x: lastX, y: lastY, time: Date.now()}];
+            }
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            
+            e.preventDefault();
+            const rect = gameState.canvas.getBoundingClientRect();
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const currentX = clientX - rect.left;
+            const currentY = clientY - rect.top;
+
+            // 트레일 포인트 추가
+            trailPoints.push({x: currentX, y: currentY, time: Date.now()});
+            
+            // 오래된 트레일 포인트 제거 (1초 이상 된 것들)
+            const now = Date.now();
+            trailPoints = trailPoints.filter(point => now - point.time < 1000);
+
+            if (isRightClick) {
+                // 우클릭 시 트레일 효과만 (충돌 검사 없음)
+                drawTrail();
+            } else {
+                // 좌클릭/터치 시 드래그 궤적 저장
+                dragTrail.push({x: currentX, y: currentY, time: Date.now()});
+                
+                // 오래된 드래그 궤적 제거 (3초 이상 된 것들)
+                const now = Date.now();
+                dragTrail = dragTrail.filter(point => now - point.time < 3000);
+
+                // 충돌 검사
+                checkCollisions(lastX, lastY, currentX, currentY);
+            }
+
+            lastX = currentX;
+            lastY = currentY;
+        }
+
+        function drawTrail() {
+            if (trailPoints.length < 2) return;
+            
+            for (let i = 1; i < trailPoints.length; i++) {
+                const point = trailPoints[i];
+                const prevPoint = trailPoints[i - 1];
+                const age = Date.now() - point.time;
+                const alpha = Math.max(0, 1 - age / 1000);
+                
+                gameState.ctx.strokeStyle = `rgba(255, 107, 107, ${alpha})`;
+                gameState.ctx.lineWidth = 3;
+                gameState.ctx.lineCap = 'round';
+                gameState.ctx.beginPath();
+                gameState.ctx.moveTo(prevPoint.x, prevPoint.y);
+                gameState.ctx.lineTo(point.x, point.y);
+                gameState.ctx.stroke();
+            }
+        }
+
+        function drawDragTrail() {
+            if (dragTrail.length < 2) return;
+            
+            for (let i = 1; i < dragTrail.length; i++) {
+                const point = dragTrail[i];
+                const prevPoint = dragTrail[i - 1];
+                const age = Date.now() - point.time;
+                const alpha = Math.max(0, 1 - age / 3000); // 3초 동안 페이드아웃
+                
+                gameState.ctx.strokeStyle = `rgba(255, 107, 107, ${alpha * 0.3})`;
+                gameState.ctx.lineWidth = 3;
+                gameState.ctx.lineCap = 'round';
+                gameState.ctx.beginPath();
+                gameState.ctx.moveTo(prevPoint.x, prevPoint.y);
+                gameState.ctx.lineTo(point.x, point.y);
+                gameState.ctx.stroke();
+            }
+        }
+
+        function endDrag() {
+            isDragging = false;
+            isRightClick = false;
+            trailPoints = [];
+            // dragTrail은 유지 (페이드아웃 효과를 위해)
+        }
+
+        // 충돌 검사
+        function checkCollisions(x1, y1, x2, y2) {
+            gameState.shapes.forEach(shape => {
+                if (shape.isCut) return;
+
+                // 선분과 원의 충돌 검사
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                
+                if (length === 0) return;
+
+                const t = Math.max(0, Math.min(1, ((shape.x - x1) * dx + (shape.y - y1) * dy) / (length * length)));
+                const closestX = x1 + t * dx;
+                const closestY = y1 + t * dy;
+                
+                const distance = Math.sqrt((shape.x - closestX) ** 2 + (shape.y - closestY) ** 2);
+                
+                if (distance < shape.size / 2) {
+                    // 도형 자르기
+                    shape.isCut = true;
+                    gameState.score += shape.points;
+                    
+                    // 통계 업데이트
+                    gameState.shapeStats[shape.rank].count++;
+                    gameState.shapeStats[shape.rank].points += shape.points;
+                    
+                    // 멘트 표시 (충돌 지점에서)
+                    showMessage(shape.ment, closestX, closestY, shape.points);
+                }
+            });
+        }
+
+        // 멘트 표시
+        function showMessage(message, x, y, points) {
+            const messageDisplay = document.getElementById('messageDisplay');
+            
+            if (points !== undefined) {
+                // 점수와 멘트를 함께 표시
+                messageDisplay.innerHTML = `
+                    <div class="points-earned">+${points}pts</div>
+                    <div>${message}</div>
+                `;
+            } else {
+                // 멘트만 표시
+                messageDisplay.textContent = message;
+            }
+            
+            if (x !== undefined && y !== undefined) {
+                // 마우스 위치에 표시
+                messageDisplay.style.left = x + 'px';
+                messageDisplay.style.top = y + 'px';
+                messageDisplay.style.transform = 'translate(-50%, -50%)';
+            } else {
+                // 기본 중앙 위치
+                messageDisplay.style.left = '50%';
+                messageDisplay.style.top = '50%';
+                messageDisplay.style.transform = 'translate(-50%, -50%)';
+            }
+            
+            messageDisplay.classList.add('show');
+            
+            setTimeout(() => {
+                messageDisplay.classList.remove('show');
+            }, 2000);
+        }
+
+        // 게임 종료
+        function endGame() {
+            gameState.isPlaying = false;
+            cancelAnimationFrame(gameState.animationId);
+
+            // 종료 화면 표시
+            const scoreSummary = document.getElementById('scoreSummary');
+            scoreSummary.innerHTML = `
+                <div class="total-score">Total Score: ${gameState.score}</div>
+                <div class="score-grid">
+                    ${Object.entries(gameState.shapeStats).map(([rank, stats]) => `
+                        <div class="score-card">
+                            <img class="score-card-image" src="${stats.image.src}" alt="Shape ${rank}">
+                            <div class="score-card-info">
+                                <div class="score-card-count">${stats.count}</div>
+                                <div>${stats.points}pts</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById('endScreen').style.display = 'flex';
+        }
+
+        // 게임 재시작
+        function restartGame() {
+            document.getElementById('endScreen').style.display = 'none';
+            document.getElementById('setupScreen').style.display = 'flex';
+            
+            // 게임 상태 초기화
+            gameState.isPlaying = false;
+            gameState.score = 0;
+            gameState.shapes = [];
+            gameState.shapeStats = {};
+            
+            // 캔버스 클리어
+            if (gameState.ctx) {
+                gameState.ctx.clearRect(0, 0, gameState.canvas.width, gameState.canvas.height);
+            }
+
+            // 모든 커스터마이징 초기화
+            const emojis = ['🐍', '🕷️', '🪱', '🦗', '💩'];
+            const defaultMents = ["Got 'em!", 'Squashed!', 'Done!', 'Bye!', 'Oops!'];
+            
+            for (let i = 1; i <= 5; i++) {
+                const item = document.querySelector(`[data-rank="${i}"]`);
+                const preview = item.querySelector('.image-preview');
+                const mentInput = item.querySelector('.ment-input');
+                const emojiDisplay = item.querySelector('.emoji-display');
+                const uploadText = item.querySelector('.upload-text');
+                const uploadButton = item.querySelector('.upload-button');
+                
+                // 이미지 제거
+                preview.src = '';
+                preview.classList.remove('show');
+                
+                // 이모지 다시 표시
+                emojiDisplay.textContent = emojis[i - 1];
+                emojiDisplay.style.display = 'block';
+                
+                // 버튼과 텍스트 다시 표시
+                uploadText.style.display = 'block';
+                uploadButton.style.display = 'block';
+                item.classList.remove('has-image');
+                
+                // 멘트 초기화
+                mentInput.value = defaultMents[i - 1];
+                
+                // 파일 입력 초기화
+                const fileInput = item.querySelector('.file-input');
+                fileInput.value = '';
+            }
+            
+            // 초기화 후 상태 체크
+            checkAllImagesReady();
+        }
+
+        // 게임 룰 모달 표시
+        function showGameRules() {
+            document.getElementById('rulesModal').style.display = 'flex';
+        }
+
+        // 게임 룰 모달 숨기기
+        function hideGameRules() {
+            document.getElementById('rulesModal').style.display = 'none';
+        }
+
+        // 모달 외부 클릭 시 닫기
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('rulesModal');
+            if (e.target === modal) {
+                hideGameRules();
+            }
+        });
+
+        // ESC 키로 모달 닫기
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideGameRules();
+            }
+        });
+
+        // 게임 이벤트 초기화를 게임 시작 시에 호출
+        const originalInitializeGame = initializeGame;
+        initializeGame = function(data) {
+            originalInitializeGame(data);
+            initializeGameEvents();
+        };
+    </script>
+</body>
+</html>
