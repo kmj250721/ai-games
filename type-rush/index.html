@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Type Rush: Random Typing Challenge</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      .game-container {
+        width: 1000px;
+        height: 600px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .title {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        margin-bottom: 2rem;
+        text-align: center;
+        animation: glow 2s ease-in-out infinite alternate;
+      }
+
+      @keyframes glow {
+        from {
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5),
+            0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        to {
+          text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5),
+            0 0 20px rgba(255, 255, 255, 0.6);
+        }
+      }
+
+      .subtitle {
+        font-size: 1.2rem;
+        color: rgba(255, 255, 255, 0.8);
+        margin-bottom: 3rem;
+        text-align: center;
+      }
+
+      .start-button {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.5rem;
+        font-weight: bold;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        position: relative;
+        z-index: 3;
+        margin-bottom: 80px;
+      }
+
+      .start-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        background: linear-gradient(45deg, #ee5a24, #ff6b6b);
+      }
+
+      .start-button:active {
+        transform: translateY(-1px);
+      }
+
+      .character-container {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: flex-end;
+        z-index: 1;
+      }
+
+      .block {
+        width: 60px;
+        height: 40px;
+        background: linear-gradient(45deg, #8b4513, #a0522d);
+        margin: 0 5px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        position: relative;
+      }
+
+      .block::before {
+        content: "";
+        position: absolute;
+        top: -5px;
+        left: 5px;
+        right: 5px;
+        height: 5px;
+        background: linear-gradient(45deg, #a0522d, #8b4513);
+        border-radius: 3px;
+      }
+
+      .character {
+        font-size: 3rem;
+        position: absolute;
+        bottom: 45px;
+        left: 50%;
+        transform: translateX(-50%);
+        animation: bounce 1s ease-in-out infinite;
+        z-index: 2;
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        50% {
+          transform: translateX(-50%) translateY(-10px);
+        }
+      }
+
+      .rules {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        max-width: 200px;
+        backdrop-filter: blur(5px);
+      }
+
+      .rules h3 {
+        margin-bottom: 10px;
+        color: #ffd700;
+      }
+
+      .rules ul {
+        list-style: none;
+      }
+
+      .rules li {
+        margin-bottom: 5px;
+        padding-left: 15px;
+        position: relative;
+      }
+
+      .rules li::before {
+        content: "•";
+        color: #ffd700;
+        position: absolute;
+        left: 0;
+      }
+
+      /* 게임 화면 스타일 */
+      .game-screen {
+        display: none;
+        width: 100%;
+        height: 100%;
+        position: relative;
+        background: linear-gradient(180deg, #87CEEB 0%, #98FB98 100%);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      .game-header {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        right: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+      }
+
+      .score-info {
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 12px 25px;
+        border-radius: 25px;
+        font-size: 1.3rem;
+        font-weight: bold;
+        backdrop-filter: blur(10px);
+      }
+
+      .timer {
+        background: rgba(255, 0, 0, 0.8);
+        color: white;
+        padding: 12px 25px;
+        border-radius: 25px;
+        font-size: 1.4rem;
+        font-weight: bold;
+        backdrop-filter: blur(10px);
+      }
+
+      .game-canvas {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        border: 3px solid rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+
+      .input-container {
+        position: absolute;
+        bottom: 140px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        z-index: 10;
+      }
+
+      .input-label {
+        color: white;
+        font-size: 1.4rem;
+        font-weight: bold;
+        margin-bottom: 15px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+      }
+
+      .game-input {
+        width: 400px;
+        padding: 18px 25px;
+        font-size: 1.4rem;
+        border: none;
+        border-radius: 25px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        outline: none;
+        transition: all 0.3s ease;
+      }
+
+      .game-input:focus {
+        background: rgba(255, 255, 255, 1);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        transform: scale(1.02);
+      }
+
+      .bridge-container {
+        position: absolute;
+        bottom: -20px;
+        left: 0;
+        right: 0;
+        height: 80px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        z-index: 5;
+      }
+
+      .bridge-block {
+        width: 80px;
+        height: 60px;
+        background: linear-gradient(45deg, #8B4513, #A0522D);
+        margin: 0 2px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        position: relative;
+        border: 2px solid #654321;
+      }
+
+      .bridge-block::before {
+        content: "";
+        position: absolute;
+        top: -8px;
+        left: 8px;
+        right: 8px;
+        height: 8px;
+        background: linear-gradient(45deg, #A0522D, #8B4513);
+        border-radius: 5px;
+        border: 1px solid #654321;
+      }
+
+      .game-character {
+        position: absolute;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 3rem;
+        z-index: 6;
+        transition: all 0.5s ease;
+        animation: characterBounce 1s ease-in-out infinite;
+      }
+
+      @keyframes characterBounce {
+        0%, 100% {
+          transform: translateX(-50%) translateY(0);
+        }
+        50% {
+          transform: translateX(-50%) translateY(-8px);
+        }
+      }
+
+      .result-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 20px 40px;
+        border-radius: 15px;
+        font-size: 1.5rem;
+        font-weight: bold;
+        text-align: center;
+        z-index: 20;
+        backdrop-filter: blur(10px);
+        display: none;
+      }
+
+      .correct {
+        background: rgba(0, 255, 0, 0.8);
+      }
+
+      .incorrect {
+        background: rgba(255, 0, 0, 0.8);
+      }
+
+      /* Countdown styles */
+      .countdown-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        backdrop-filter: blur(5px);
+      }
+
+      .countdown-number {
+        font-size: 8rem;
+        font-weight: bold;
+        color: white;
+        text-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+        animation: countdownPulse 1s ease-in-out;
+      }
+
+      @keyframes countdownPulse {
+        0% {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        50% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* 메인 화면 스타일 */
+      .main-screen {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+      }
+
+      @media (max-width: 1100px) {
+        .game-container {
+          width: 95vw;
+          height: 85vh;
+          margin: 20px;
+        }
+
+        .game-canvas {
+          width: 500px;
+          height: 250px;
+        }
+
+        .input-container {
+          bottom: 120px;
+        }
+
+        .game-input {
+          width: 350px;
+          font-size: 1.2rem;
+        }
+
+        .input-label {
+          font-size: 1.2rem;
+        }
+
+        .score-info {
+          font-size: 1.1rem;
+        }
+
+        .timer {
+          font-size: 1.2rem;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .game-container {
+          width: 90vw;
+          height: 80vh;
+          margin: 20px;
+        }
+
+        .title {
+          font-size: 2rem;
+        }
+
+        .subtitle {
+          font-size: 1rem;
+        }
+
+        .start-button {
+          font-size: 1.2rem;
+          padding: 12px 30px;
+          margin-bottom: 60px;
+        }
+
+        .character {
+          font-size: 2.5rem;
+        }
+
+        .block {
+          width: 50px;
+          height: 35px;
+        }
+
+        .rules {
+          position: static;
+          margin-top: 20px;
+          max-width: none;
+        }
+
+        .game-canvas {
+          width: 400px;
+          height: 200px;
+        }
+
+        .input-container {
+          bottom: 110px;
+        }
+
+        .game-input {
+          width: 300px;
+          font-size: 1rem;
+        }
+
+        .input-label {
+          font-size: 1rem;
+        }
+
+        .score-info {
+          font-size: 1rem;
+        }
+
+        .timer {
+          font-size: 1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <!-- Main Screen -->
+      <div class="main-screen">
+      <div class="rules">
+          <h3>Game Rules</h3>
+          <ul>
+            <li>Type as many words as possible in 60 seconds</li>
+            <li>Round 1-5: Lowercase only (5-10 characters)</li>
+            <li>Round 6-10: Lowercase + Uppercase (5-10 characters)</li>
+            <li>Round 11-15: Lowercase + Special characters (5-10 characters)</li>
+            <li>Round 16+: All characters (5-15 characters, 5 sec limit)</li>
+            <li>Copy/Paste disabled</li>
+            <li>Character advances on success</li>
+        </ul>
+      </div>
+
+      <h1 class="title">Type Rush</h1>
+        <p class="subtitle">Random Typing Challenge</p>
+
+        <button class="start-button" onclick="startGame()">Start Game</button>
+
+      <div class="character-container">
+        <div class="block"></div>
+        <div class="block"></div>
+        <div class="block"></div>
+        <div class="character">👾</div>
+        </div>
+      </div>
+
+      <!-- Game Screen -->
+      <div class="game-screen" id="gameScreen">
+        <div class="game-header">
+          <div class="score-info">
+            Score: <span id="score">0</span> | Words: <span id="wordCount">0</span>
+          </div>
+          <div class="timer" id="timer">60</div>
+        </div>
+
+        <canvas class="game-canvas" id="gameCanvas" width="600" height="300"></canvas>
+
+        <div class="input-container">
+          <div class="input-label">Type the word below exactly:</div>
+          <input type="text" class="game-input" id="gameInput" placeholder="Type here..." autocomplete="off" spellcheck="false">
+        </div>
+
+        <div class="bridge-container" id="bridgeContainer">
+          <!-- Bridge blocks are generated dynamically -->
+        </div>
+
+        <div class="game-character" id="gameCharacter">👾</div>
+
+        <div class="result-message" id="resultMessage"></div>
+
+        <!-- Countdown overlay -->
+        <div class="countdown-overlay" id="countdownOverlay" style="display: none;">
+          <div class="countdown-number" id="countdownNumber">3</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Game state variables
+      let gameState = {
+        isPlaying: false,
+        score: 0,
+        wordCount: 0,
+        timeLeft: 60,
+        currentWord: '',
+        characterPosition: 0,
+        maxPosition: 10,
+        currentRound: 1,
+        wordTimer: 0,
+        wordTimeLimit: 0
+      };
+
+      // Keyboard character sets
+      const keyboardChars = {
+        lowercase: 'abcdefghijklmnopqrstuvwxyz',
+        uppercase: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        special: '-_'
+      };
+
+      // Random word generation function
+      function generateRandomWord(round) {
+        let chars = '';
+        let minLength = 5;
+        let maxLength = 10;
+        
+        if (round <= 5) {
+          // Round 1-5: Lowercase only, 5-10 characters
+          chars = keyboardChars.lowercase;
+        } else if (round <= 10) {
+          // Round 6-10: Lowercase + Uppercase, 5-10 characters
+          chars = keyboardChars.lowercase + keyboardChars.uppercase;
+        } else if (round <= 15) {
+          // Round 11-15: Lowercase + Special characters, 5-10 characters
+          chars = keyboardChars.lowercase + keyboardChars.special;
+        } else {
+          // Round 16+: Lowercase + Uppercase + Special characters, 5-15 characters
+          chars = keyboardChars.lowercase + keyboardChars.uppercase + keyboardChars.special;
+          minLength = 5;
+          maxLength = 15;
+        }
+        
+        const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
+        let word = '';
+        
+        for (let i = 0; i < length; i++) {
+          word += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        
+        return word;
+      }
+
+      // Game start function
+      function startGame() {
+        // Hide main screen and show game screen
+        document.querySelector('.main-screen').style.display = 'none';
+        document.getElementById('gameScreen').style.display = 'block';
+        
+        // Initialize game state
+        gameState.isPlaying = true;
+        gameState.score = 0;
+        gameState.wordCount = 0;
+        gameState.timeLeft = 60;
+        gameState.characterPosition = 0;
+        gameState.currentRound = 1;
+        gameState.wordTimer = 0;
+        gameState.wordTimeLimit = 0;
+        
+        // Create bridge
+        createBridge();
+        
+        // Initialize character position at start
+        initializeCharacterPosition();
+        
+        // Disable Ctrl key
+        disableCtrlKey();
+        
+        // Start countdown before game begins
+        startCountdown();
+      }
+
+      // Bridge creation function
+      function createBridge() {
+        const bridgeContainer = document.getElementById('bridgeContainer');
+        bridgeContainer.innerHTML = '';
+        
+        // Create bridge blocks with colors representing upcoming rounds
+        for (let i = 0; i < gameState.maxPosition + 1; i++) {
+          const block = document.createElement('div');
+          block.className = 'bridge-block';
+          
+          // Calculate which round this block represents
+          const blockRound = gameState.currentRound + i;
+          
+          // Set color based on round range
+          if (blockRound <= 5) {
+            // Rounds 1-5: Red
+            block.style.background = 'linear-gradient(45deg, #FF0000, #FF4444)';
+            block.style.borderColor = '#CC0000';
+          } else if (blockRound <= 10) {
+            // Rounds 6-10: Orange
+            block.style.background = 'linear-gradient(45deg, #FF8C00, #FFA500)';
+            block.style.borderColor = '#CC7000';
+          } else if (blockRound <= 15) {
+            // Rounds 11-15: Yellow
+            block.style.background = 'linear-gradient(45deg, #FFD700, #FFFF00)';
+            block.style.borderColor = '#CCAA00';
+          } else if (blockRound <= 20) {
+            // Rounds 16-20: Green
+            block.style.background = 'linear-gradient(45deg, #00FF00, #32CD32)';
+            block.style.borderColor = '#00CC00';
+          } else if (blockRound <= 25) {
+            // Rounds 21-25: Blue
+            block.style.background = 'linear-gradient(45deg, #0000FF, #4169E1)';
+            block.style.borderColor = '#0000CC';
+          } else if (blockRound <= 30) {
+            // Rounds 26-30: Indigo
+            block.style.background = 'linear-gradient(45deg, #4B0082, #6A0DAD)';
+            block.style.borderColor = '#3C0066';
+          } else if (blockRound <= 35) {
+            // Rounds 31-35: Purple
+            block.style.background = 'linear-gradient(45deg, #800080, #9932CC)';
+            block.style.borderColor = '#660066';
+          } else {
+            // Rounds 36+: White
+            block.style.background = 'linear-gradient(45deg, #FFFFFF, #F0F0F0)';
+            block.style.borderColor = '#CCCCCC';
+          }
+          
+          bridgeContainer.appendChild(block);
+        }
+      }
+
+      // Initialize character position at start
+      function initializeCharacterPosition() {
+        const character = document.getElementById('gameCharacter');
+        const bridgeBlocks = document.querySelectorAll('.bridge-block');
+        
+        if (bridgeBlocks.length > 0) {
+          // Position character at the first block (start position)
+          const firstBlock = bridgeBlocks[0];
+          const blockRect = firstBlock.getBoundingClientRect();
+          const containerRect = document.getElementById('bridgeContainer').getBoundingClientRect();
+          
+          const startPosition = (blockRect.left - containerRect.left) + (blockRect.width / 2);
+          character.style.left = startPosition + 'px';
+          character.style.transform = 'translateX(-50%)';
+        }
+      }
+
+      // Countdown function
+      function startCountdown() {
+        const countdownOverlay = document.getElementById('countdownOverlay');
+        const countdownNumber = document.getElementById('countdownNumber');
+        let count = 3;
+        
+        // Show countdown overlay
+        countdownOverlay.style.display = 'flex';
+        
+        const countdownInterval = setInterval(() => {
+          countdownNumber.textContent = count;
+          countdownNumber.style.animation = 'none';
+          
+          // Trigger reflow to restart animation
+          void countdownNumber.offsetWidth;
+          countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+          
+          count--;
+          
+          if (count < 0) {
+            clearInterval(countdownInterval);
+            countdownOverlay.style.display = 'none';
+            
+            // Start the actual game
+            showNextWord();
+            startTimer();
+            document.getElementById('gameInput').focus();
+          }
+        }, 1000);
+      }
+
+      // Show next word function
+      function showNextWord() {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Generate random word based on round
+        gameState.currentWord = generateRandomWord(gameState.currentRound);
+        
+        // Update round
+        gameState.currentRound++;
+        
+        // Set word timer (5 second limit after round 16)
+        if (gameState.currentRound > 16) {
+          gameState.wordTimeLimit = 5;
+          gameState.wordTimer = 5;
+        } else {
+          gameState.wordTimeLimit = 0; // No limit
+          gameState.wordTimer = 0;
+        }
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw border
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(0, 0, canvas.width, canvas.height);
+        
+        // Display round information
+        ctx.fillStyle = '#666';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`Round ${gameState.currentRound - 1}`, 15, 15);
+        
+        // Draw word - display as one connected word
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 40px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Display word centered as one word
+        const word = gameState.currentWord;
+        const x = canvas.width / 2;
+        const y = canvas.height / 2;
+        
+        // Adjust font size if word is too long
+        if (word.length > 12) {
+          ctx.font = 'bold 30px Arial';
+        } else if (word.length > 8) {
+          ctx.font = 'bold 35px Arial';
+        }
+        
+        ctx.fillText(word, x, y);
+        
+        // Clear input field
+        document.getElementById('gameInput').value = '';
+        document.getElementById('gameInput').focus();
+        
+        // Start word timer (after round 16)
+        if (gameState.wordTimeLimit > 0) {
+          startWordTimer();
+        }
+      }
+
+      // Timer start function
+      function startTimer() {
+        const timerElement = document.getElementById('timer');
+        
+        const timerInterval = setInterval(() => {
+          gameState.timeLeft--;
+          timerElement.textContent = gameState.timeLeft;
+          
+          if (gameState.timeLeft <= 0) {
+            clearInterval(timerInterval);
+            endGame();
+          }
+        }, 1000);
+      }
+
+      // Word timer start function (after round 16)
+      function startWordTimer() {
+        const wordTimerInterval = setInterval(() => {
+          gameState.wordTimer--;
+          
+          if (gameState.wordTimer <= 0) {
+            clearInterval(wordTimerInterval);
+            // Time out - wrong answer
+            showResultMessage('Time out!', 'incorrect');
+            setTimeout(() => {
+              hideResultMessage();
+              showNextWord();
+            }, 1000);
+          }
+        }, 1000);
+      }
+
+      // Ctrl key disable function
+      function disableCtrlKey() {
+        document.addEventListener('keydown', function(e) {
+          if (e.ctrlKey) {
+            e.preventDefault();
+            return false;
+          }
+        });
+        
+        // Copy/paste prevention
+        document.addEventListener('paste', function(e) {
+          e.preventDefault();
+          return false;
+        });
+        
+        document.addEventListener('copy', function(e) {
+          e.preventDefault();
+          return false;
+        });
+      }
+
+      // Input validation function
+      function checkInput() {
+        const userInput = document.getElementById('gameInput').value.trim();
+        const resultMessage = document.getElementById('resultMessage');
+        
+        if (userInput === gameState.currentWord) {
+          // Correct answer - calculate points by round
+          let points = 10;
+          if (gameState.currentRound <= 5) {
+            points = 10; // Round 1-5: Basic points
+          } else if (gameState.currentRound <= 10) {
+            points = 15; // Round 6-10: Higher points with uppercase
+          } else if (gameState.currentRound <= 15) {
+            points = 20; // Round 11-15: Higher points with special characters
+          } else {
+            points = 25; // Round 16+: Highest points with all characters + time limit
+          }
+          
+          gameState.score += points;
+          gameState.wordCount++;
+          gameState.characterPosition++;
+          
+          // Update score
+          document.getElementById('score').textContent = gameState.score;
+          document.getElementById('wordCount').textContent = gameState.wordCount;
+          
+          // Move character
+          moveCharacter();
+          
+          // Correct answer message
+          showResultMessage(`Correct! +${points} points`, 'correct');
+          
+          // Show next word
+          setTimeout(() => {
+            showNextWord();
+            hideResultMessage();
+          }, 1000);
+          
+        } else {
+          // Wrong answer
+          showResultMessage('Wrong!', 'incorrect');
+          
+          setTimeout(() => {
+            hideResultMessage();
+            document.getElementById('gameInput').value = '';
+            document.getElementById('gameInput').focus();
+          }, 1000);
+        }
+      }
+
+      // Character movement function
+      function moveCharacter() {
+        const character = document.getElementById('gameCharacter');
+        const bridgeBlocks = document.querySelectorAll('.bridge-block');
+        
+        // Calculate middle position (half of the bridge)
+        const maxMovePosition = Math.floor(bridgeBlocks.length / 2);
+        
+        if (gameState.characterPosition < maxMovePosition) {
+          // Move character to next position (only until middle)
+          const targetBlock = bridgeBlocks[gameState.characterPosition];
+          const blockRect = targetBlock.getBoundingClientRect();
+          const containerRect = document.getElementById('bridgeContainer').getBoundingClientRect();
+          
+          const newPosition = (blockRect.left - containerRect.left) + (blockRect.width / 2);
+          character.style.left = newPosition + 'px';
+          character.style.transform = 'translateX(-50%)';
+        }
+        
+        // Always shift bridge colors to show upcoming rounds
+        shiftBridgeColors();
+      }
+
+      // Shift bridge colors to show upcoming rounds
+      function shiftBridgeColors() {
+        const bridgeBlocks = document.querySelectorAll('.bridge-block');
+        
+        // Shift each block's color to the previous position (right to left)
+        for (let i = 0; i < bridgeBlocks.length - 1; i++) {
+          const currentBlock = bridgeBlocks[i];
+          const nextBlock = bridgeBlocks[i + 1];
+          
+          // Copy color from next block
+          currentBlock.style.background = nextBlock.style.background;
+          currentBlock.style.borderColor = nextBlock.style.borderColor;
+        }
+        
+        // Set last block to the next round's color
+        const nextRound = gameState.currentRound + bridgeBlocks.length;
+        const lastBlock = bridgeBlocks[bridgeBlocks.length - 1];
+        
+        if (nextRound <= 5) {
+          // Rounds 1-5: Red
+          lastBlock.style.background = 'linear-gradient(45deg, #FF0000, #FF4444)';
+          lastBlock.style.borderColor = '#CC0000';
+        } else if (nextRound <= 10) {
+          // Rounds 6-10: Orange
+          lastBlock.style.background = 'linear-gradient(45deg, #FF8C00, #FFA500)';
+          lastBlock.style.borderColor = '#CC7000';
+        } else if (nextRound <= 15) {
+          // Rounds 11-15: Yellow
+          lastBlock.style.background = 'linear-gradient(45deg, #FFD700, #FFFF00)';
+          lastBlock.style.borderColor = '#CCAA00';
+        } else if (nextRound <= 20) {
+          // Rounds 16-20: Green
+          lastBlock.style.background = 'linear-gradient(45deg, #00FF00, #32CD32)';
+          lastBlock.style.borderColor = '#00CC00';
+        } else if (nextRound <= 25) {
+          // Rounds 21-25: Blue
+          lastBlock.style.background = 'linear-gradient(45deg, #0000FF, #4169E1)';
+          lastBlock.style.borderColor = '#0000CC';
+        } else if (nextRound <= 30) {
+          // Rounds 26-30: Indigo
+          lastBlock.style.background = 'linear-gradient(45deg, #4B0082, #6A0DAD)';
+          lastBlock.style.borderColor = '#3C0066';
+        } else if (nextRound <= 35) {
+          // Rounds 31-35: Purple
+          lastBlock.style.background = 'linear-gradient(45deg, #800080, #9932CC)';
+          lastBlock.style.borderColor = '#660066';
+        } else {
+          // Rounds 36+: White
+          lastBlock.style.background = 'linear-gradient(45deg, #FFFFFF, #F0F0F0)';
+          lastBlock.style.borderColor = '#CCCCCC';
+        }
+        
+        // Add transition effect
+        bridgeBlocks.forEach(block => {
+          block.style.transition = 'all 0.5s ease';
+        });
+      }
+
+      // Result message display function
+      function showResultMessage(message, type) {
+        const resultMessage = document.getElementById('resultMessage');
+        resultMessage.textContent = message;
+        resultMessage.className = `result-message ${type}`;
+        resultMessage.style.display = 'block';
+      }
+
+      // Hide result message function
+      function hideResultMessage() {
+        document.getElementById('resultMessage').style.display = 'none';
+      }
+
+      // Game end function
+      function endGame() {
+        gameState.isPlaying = false;
+        
+        const resultMessage = document.getElementById('resultMessage');
+        resultMessage.innerHTML = `
+          <div>Game Over!</div>
+          <div style="margin-top: 10px; font-size: 1.2rem;">
+            Final Score: ${gameState.score} points<br>
+            Words Completed: ${gameState.wordCount}<br>
+            Round Reached: ${gameState.currentRound - 1}
+          </div>
+          <button onclick="restartGame()" style="margin-top: 15px; padding: 10px 20px; background: #ff6b6b; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1rem;">
+            Play Again
+          </button>
+        `;
+        resultMessage.style.display = 'block';
+        resultMessage.className = 'result-message';
+      }
+
+      // Game restart function
+      function restartGame() {
+        // Hide game screen
+        document.getElementById('gameScreen').style.display = 'none';
+        
+        // Show main screen and ensure proper layout
+        const mainScreen = document.querySelector('.main-screen');
+        mainScreen.style.display = 'flex';
+        mainScreen.style.flexDirection = 'column';
+        mainScreen.style.justifyContent = 'center';
+        mainScreen.style.alignItems = 'center';
+        mainScreen.style.position = 'relative';
+        
+        // Hide result message
+        hideResultMessage();
+        
+        // Reset game state
+        gameState.isPlaying = false;
+        gameState.score = 0;
+        gameState.wordCount = 0;
+        gameState.currentRound = 1;
+        gameState.characterPosition = 0;
+        
+        // Update display elements
+        document.getElementById('score').textContent = '0';
+        document.getElementById('wordCount').textContent = '0';
+        document.getElementById('timer').textContent = '60';
+      }
+
+      // Enter key event listener
+      document.addEventListener('DOMContentLoaded', function() {
+        const gameInput = document.getElementById('gameInput');
+        
+        gameInput.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter' && gameState.isPlaying) {
+            checkInput();
+          }
+        });
+      });
+
+      // Page load animation effect
+      window.addEventListener("load", function () {
+        const container = document.querySelector(".game-container");
+        container.style.opacity = "0";
+        container.style.transform = "scale(0.8)";
+
+        setTimeout(() => {
+          container.style.transition = "all 0.8s ease";
+          container.style.opacity = "1";
+          container.style.transform = "scale(1)";
+        }, 100);
+      });
+    </script>
+  </body>
+</html>
