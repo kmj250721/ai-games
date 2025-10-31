@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spin Accuracy Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow-y: auto;
+    }
+
+    #game-container {
+      max-width: 1200px;
+      max-height: 90vh;
+      width: 100%;
+      background: rgba(30, 30, 46, 0.95);
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      position: relative;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 0 0 30px 0;
+      text-align: center;
+      font-size: 28px;
+      color: #00ffff;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+
+    #help-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      cursor: pointer;
+      font-size: 24px;
+      width: 35px;
+      height: 35px;
+      background: rgba(0, 255, 255, 0.2);
+      border: 2px solid #00ffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+    }
+
+    #help-btn:hover {
+      background: rgba(0, 255, 255, 0.3);
+      transform: scale(1.1);
+    }
+
+    #game-area {
+      display: flex;
+      flex-direction: row;
+      gap: 20px;
+      align-items: stretch;
+      justify-content: center;
+      min-height: 400px;
+      margin-top: 20px;
+    }
+
+    .round-section {
+      flex: 1;
+      min-width: 280px;
+      max-width: 350px;
+      background: rgba(30, 30, 46, 0.5);
+      border: 2px solid rgba(0, 255, 255, 0.2);
+      border-radius: 15px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s;
+    }
+
+    .round-section.active {
+      background: rgba(30, 30, 46, 0.95);
+      border-color: rgba(0, 255, 255, 0.5);
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    }
+
+    .round-section.inactive {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+
+    .round-section h3 {
+      margin: 0 0 15px 0;
+      text-align: center;
+      color: #00ffff;
+      font-size: 18px;
+      border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+      padding-bottom: 10px;
+    }
+
+    .round-section.inactive h3 {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    #game-area p {
+      margin: 15px 0;
+      font-size: 18px;
+    }
+
+    #game-area h2 {
+      margin: 20px 0;
+      color: #00ffff;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+
+    .arrow-container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 30px auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #arrow {
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 80px solid #00ffff;
+      transform-origin: 10px 80px;
+      position: absolute;
+      top: calc(50% - 80px);
+      left: calc(50% - 10px);
+      filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
+    }
+
+    #ghost-arrow {
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-bottom: 80px solid rgba(255,255,255,0.25);
+      transform-origin: 10px 80px;
+      position: absolute;
+      top: calc(50% - 80px);
+      left: calc(50% - 10px);
+      filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+    }
+
+    button {
+      background: linear-gradient(135deg, #00ffff 0%, #0099cc 100%);
+      border: 2px solid #00ffff;
+      color: #111;
+      padding: 12px 30px;
+      margin-top: 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+    }
+
+    button:hover:not(:disabled) {
+      background: linear-gradient(135deg, #00ffff 0%, #00ccff 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 255, 255, 0.5);
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    #modal-content {
+      background: linear-gradient(135deg, #1e1e2e 0%, #252540 100%);
+      padding: 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 400px;
+      text-align: left;
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+    }
+
+    #modal-content ul {
+      margin: 15px 0;
+      padding-left: 25px;
+    }
+
+    #modal-content li {
+      margin: 10px 0;
+      line-height: 1.6;
+    }
+
+    #modal-content button {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    #speed-config {
+      background: rgba(0, 255, 255, 0.1);
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      border-radius: 15px;
+      padding: 20px;
+      margin: 20px 0;
+      text-align: center;
+    }
+
+    #speed-config label {
+      display: block;
+      margin-bottom: 15px;
+      font-size: 18px;
+      color: #00ffff;
+      font-weight: bold;
+    }
+
+    #speed-slider {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      margin: 15px 0;
+    }
+
+    #speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #00ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+    }
+
+    #speed-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: #00ffff;
+      border-radius: 50%;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+    }
+
+    #speed-value {
+      font-size: 24px;
+      color: #00ffff;
+      font-weight: bold;
+      margin: 10px 0;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    }
+
+    #speed-info {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1 id="title">Spin Accuracy Game</h1>
+    <div id="help-btn">?</div>
+
+    <div id="game-area">
+      <button id="start-btn">Start Game</button>
+    </div>
+  </div>
+
+  <div id="modal">
+    <div id="modal-content">
+      <p>Stop the arrow as close as possible to the starting angle!</p>
+      <ul>
+        <li>5 rounds total</li>
+        <li>Each round: 15s limit</li>
+        <li>0–90° error → +points</li>
+        <li>91–180° error → -points</li>
+      </ul>
+      <button id="close-modal">Close</button>
+    </div>
+  </div>
+
+  <script>
+    const helpBtn = document.getElementById("help-btn");
+    const modal = document.getElementById("modal");
+    const closeModal = document.getElementById("close-modal");
+    const gameArea = document.getElementById("game-area");
+
+    let round = 0;
+    let score = 0;
+    let interval, startAngle, currentAngle;
+    let isRunning = false;
+    let rotationSpeed = 120; // deg/sec (base speed)
+    let speedMultiplier = 1.0; // Speed multiplier for each round
+    let startTime;
+
+    helpBtn.onclick = () => modal.style.display = "flex";
+    closeModal.onclick = () => modal.style.display = "none";
+
+    function startGame() {
+      round = 0;
+      score = 0;
+      speedMultiplier = 1.0;
+      
+      // Create 3 sections layout
+      gameArea.innerHTML = `
+        <div class="round-section inactive" id="speed-config-section">
+          <h3>1. 배속 설정</h3>
+          <div id="speed-config-content"></div>
+        </div>
+        <div class="round-section inactive" id="game-section">
+          <h3>2. 게임</h3>
+          <div id="game-content"><p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">배속 설정 후 시작</p></div>
+        </div>
+        <div class="round-section inactive" id="result-section">
+          <h3>3. 라운드 결과</h3>
+          <div id="result-content"><p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">게임 완료 후 표시</p></div>
+        </div>
+      `;
+      
+      // Initialize first round
+      nextRound();
+    }
+
+    function setActiveSection(sectionId) {
+      const sections = document.querySelectorAll('.round-section');
+      sections.forEach(section => {
+        section.classList.remove('active');
+        section.classList.add('inactive');
+      });
+      
+      const activeSection = document.getElementById(sectionId);
+      if (activeSection) {
+        activeSection.classList.remove('inactive');
+        activeSection.classList.add('active');
+      }
+    }
+
+    function calculateMaxScore(multiplier) {
+      // Perfect hit (0° error) gives 90 points, multiplied by speed multiplier
+      return Math.round(90 * multiplier);
+    }
+
+    function showSpeedConfig(callback) {
+      const initialMultiplier = speedMultiplier;
+      let currentMultiplier = initialMultiplier;
+      let previewInterval;
+      let previewAngle = 0;
+      let previewStartTime = 0;
+
+      const speedContent = document.getElementById("speed-config-content");
+      speedContent.innerHTML = `
+        <div style="margin-bottom: 15px;">
+          <p style="margin: 5px 0; font-size: 14px;">Round ${round}/5</p>
+          <p style="margin: 5px 0; font-size: 14px;">현재 스코어: <span style="color: #00ffff; font-weight: bold;">${score}</span></p>
+          <p style="margin: 5px 0; font-size: 12px; color: #00ffff;" id="expected-score">예상 최대 획득: <span style="font-weight: bold;">${calculateMaxScore(currentMultiplier)}</span> (완벽한 각도 정확도 시)</p>
+        </div>
+        <div style="margin: 15px 0;">
+          <p style="text-align: center; margin-bottom: 10px; color: #00ffff; font-size: 13px;">속도 미리보기</p>
+          <div class="arrow-container" style="margin: 0 auto; width: 150px; height: 150px;">
+            <div id="preview-ghost-arrow"></div>
+            <div id="preview-arrow"></div>
+          </div>
+          <p id="preview-speed-info" style="text-align: center; font-size: 11px; color: rgba(0, 255, 255, 0.7); margin-top: 10px;">${(120 * currentMultiplier).toFixed(0)} deg/sec</p>
+        </div>
+        <div id="speed-value" style="font-size: 20px;">${currentMultiplier.toFixed(1)}x</div>
+        <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="${initialMultiplier}" style="margin: 10px 0;">
+        <div id="speed-info" style="font-size: 12px;">
+          <p>0.5x (느림) ~ 3.0x (매우 빠름)</p>
+          <p style="font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-top: 5px;">※ 배속이 높을수록 더 많은 점수를 획득</p>
+        </div>
+        <button id="confirm-speed-btn" style="margin-top: 15px; padding: 10px 20px; font-size: 14px;">설정 완료</button>
+      `;
+
+      const previewArrow = document.getElementById("preview-arrow");
+      const previewGhost = document.getElementById("preview-ghost-arrow");
+      const previewSpeedInfo = document.getElementById("preview-speed-info");
+      const slider = document.getElementById("speed-slider");
+      const speedValue = document.getElementById("speed-value");
+      const expectedScore = document.getElementById("expected-score");
+      const confirmBtn = document.getElementById("confirm-speed-btn");
+
+      // Set preview arrow styles (smaller for preview)
+      const arrowHeight = 60;
+      const arrowWidth = 8;
+      previewGhost.style.width = "0";
+      previewGhost.style.height = "0";
+      previewGhost.style.borderLeft = `${arrowWidth}px solid transparent`;
+      previewGhost.style.borderRight = `${arrowWidth}px solid transparent`;
+      previewGhost.style.borderBottom = `${arrowHeight}px solid rgba(255,255,255,0.25)`;
+      previewGhost.style.transformOrigin = `${arrowWidth}px ${arrowHeight}px`;
+      previewGhost.style.position = "absolute";
+      previewGhost.style.top = `calc(50% - ${arrowHeight}px)`;
+      previewGhost.style.left = `calc(50% - ${arrowWidth}px)`;
+      previewGhost.style.filter = "drop-shadow(0 0 4px rgba(255, 255, 255, 0.3))";
+
+      previewArrow.style.width = "0";
+      previewArrow.style.height = "0";
+      previewArrow.style.borderLeft = `${arrowWidth}px solid transparent`;
+      previewArrow.style.borderRight = `${arrowWidth}px solid transparent`;
+      previewArrow.style.borderBottom = `${arrowHeight}px solid #00ffff`;
+      previewArrow.style.transformOrigin = `${arrowWidth}px ${arrowHeight}px`;
+      previewArrow.style.position = "absolute";
+      previewArrow.style.top = `calc(50% - ${arrowHeight}px)`;
+      previewArrow.style.left = `calc(50% - ${arrowWidth}px)`;
+      previewArrow.style.filter = "drop-shadow(0 0 8px rgba(0, 255, 255, 0.8))";
+
+      // Initialize preview
+      previewGhost.style.transform = `rotate(0deg)`;
+      previewAngle = 0;
+      previewStartTime = performance.now();
+
+      function updatePreview() {
+        const currentSpeed = 120 * currentMultiplier;
+        const delta = (performance.now() - previewStartTime) / 1000;
+        previewAngle = (delta * currentSpeed) % 360;
+        previewArrow.style.transform = `rotate(${previewAngle}deg)`;
+        previewSpeedInfo.textContent = `${currentSpeed.toFixed(0)} deg/sec`;
+      }
+
+      function startPreview() {
+        updatePreview();
+        previewInterval = requestAnimationFrame(function animate() {
+          updatePreview();
+          previewInterval = requestAnimationFrame(animate);
+        });
+      }
+
+      startPreview();
+
+      slider.oninput = () => {
+        currentMultiplier = parseFloat(slider.value);
+        speedValue.textContent = currentMultiplier.toFixed(1) + "x";
+        const maxScore = calculateMaxScore(currentMultiplier);
+        expectedScore.innerHTML = `예상 최대 획득: <span style="font-weight: bold;">${maxScore}</span> (완벽한 각도 정확도 시)`;
+        previewStartTime = performance.now();
+        updatePreview();
+      };
+
+      confirmBtn.onclick = () => {
+        if (previewInterval) cancelAnimationFrame(previewInterval);
+        speedMultiplier = currentMultiplier;
+        rotationSpeed = 120 * speedMultiplier; // Base speed * multiplier
+        callback();
+      };
+    }
+
+    function startRound() {
+      const gameContent = document.getElementById("game-content");
+      gameContent.innerHTML = `
+        <div style="margin-bottom: 10px;">
+          <p style="margin: 5px 0; font-size: 14px;">Round ${round}/5</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #00ffff;">속도: ${rotationSpeed.toFixed(0)} deg/sec (${speedMultiplier.toFixed(1)}x 배속)</p>
+          <p style="margin: 5px 0; font-size: 11px; color: rgba(0, 255, 255, 0.7);">최대 획득 가능: ${calculateMaxScore(speedMultiplier)}점</p>
+        </div>
+        <div class="arrow-container" style="margin: 15px auto; width: 150px; height: 150px;">
+          <div id="ghost-arrow"></div>
+          <div id="arrow"></div>
+        </div>
+        <button id="stop-btn" disabled style="margin-top: 15px; padding: 10px 20px; font-size: 14px;">Stop</button>
+      `;
+
+      // Clear result section
+      document.getElementById("result-content").innerHTML = '<p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">게임을 시작하세요</p>';
+
+      // Set active section
+      setActiveSection("game-section");
+
+      const arrow = document.getElementById("arrow");
+      const ghost = document.getElementById("ghost-arrow");
+      const stopBtn = document.getElementById("stop-btn");
+
+      // Set arrow styles (smaller for game section)
+      const arrowHeight = 60;
+      const arrowWidth = 8;
+      ghost.style.width = "0";
+      ghost.style.height = "0";
+      ghost.style.borderLeft = `${arrowWidth}px solid transparent`;
+      ghost.style.borderRight = `${arrowWidth}px solid transparent`;
+      ghost.style.borderBottom = `${arrowHeight}px solid rgba(255,255,255,0.25)`;
+      ghost.style.transformOrigin = `${arrowWidth}px ${arrowHeight}px`;
+      ghost.style.position = "absolute";
+      ghost.style.top = `calc(50% - ${arrowHeight}px)`;
+      ghost.style.left = `calc(50% - ${arrowWidth}px)`;
+      ghost.style.filter = "drop-shadow(0 0 4px rgba(255, 255, 255, 0.3))";
+
+      arrow.style.width = "0";
+      arrow.style.height = "0";
+      arrow.style.borderLeft = `${arrowWidth}px solid transparent`;
+      arrow.style.borderRight = `${arrowWidth}px solid transparent`;
+      arrow.style.borderBottom = `${arrowHeight}px solid #00ffff`;
+      arrow.style.transformOrigin = `${arrowWidth}px ${arrowHeight}px`;
+      arrow.style.position = "absolute";
+      arrow.style.top = `calc(50% - ${arrowHeight}px)`;
+      arrow.style.left = `calc(50% - ${arrowWidth}px)`;
+      arrow.style.filter = "drop-shadow(0 0 8px rgba(0, 255, 255, 0.8))";
+
+      startAngle = Math.random() * 360;
+      ghost.style.transform = `rotate(${startAngle}deg)`;
+
+      isRunning = false;
+
+      setTimeout(() => {
+        // start rotation after showing startAngle briefly
+        isRunning = true;
+        startTime = performance.now();
+        stopBtn.disabled = true;
+        setTimeout(() => stopBtn.disabled = false, 5000);
+      }, 1000);
+
+      interval = requestAnimationFrame(function rotateArrow(ts) {
+        if (!isRunning) return requestAnimationFrame(rotateArrow);
+        const delta = (ts - startTime) / 1000;
+        currentAngle = (startAngle + delta * rotationSpeed) % 360;
+        arrow.style.transform = `rotate(${currentAngle}deg)`;
+        if (delta < 15) {
+          requestAnimationFrame(rotateArrow);
+        } else {
+          score -= Math.round(90 * speedMultiplier);
+          nextRound();
+        }
+      });
+
+      stopBtn.onclick = () => {
+        if (!isRunning) return;
+        isRunning = false;
+        const diff = Math.abs(currentAngle - startAngle);
+        const error = diff > 180 ? 360 - diff : diff;
+        let roundScore = 0;
+        if (error <= 90) roundScore = (90 - error) * speedMultiplier;
+        else roundScore = -(error - 90) * speedMultiplier;
+        score += Math.round(roundScore);
+
+        // Show result in result section
+        const arrowHeight = 60;
+        const arrowWidth = 8;
+        const resultContent = document.getElementById("result-content");
+        resultContent.innerHTML = `
+          <div style="margin: 10px 0;">
+            <div class="arrow-container" style="margin: 0 auto; width: 120px; height: 120px;">
+              <div style="
+                width: 0;
+                height: 0;
+                border-left: ${arrowWidth}px solid transparent;
+                border-right: ${arrowWidth}px solid transparent;
+                border-bottom: ${arrowHeight}px solid rgba(255,255,255,0.25);
+                transform-origin: ${arrowWidth}px ${arrowHeight}px;
+                position: absolute;
+                top: calc(50% - ${arrowHeight}px);
+                left: calc(50% - ${arrowWidth}px);
+                filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
+                transform: rotate(${startAngle}deg);
+              "></div>
+              <div style="
+                width: 0;
+                height: 0;
+                border-left: ${arrowWidth}px solid transparent;
+                border-right: ${arrowWidth}px solid transparent;
+                border-bottom: ${arrowHeight}px solid #00ffff;
+                transform-origin: ${arrowWidth}px ${arrowHeight}px;
+                position: absolute;
+                top: calc(50% - ${arrowHeight}px);
+                left: calc(50% - ${arrowWidth}px);
+                filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
+                transform: rotate(${currentAngle}deg);
+              "></div>
+            </div>
+          </div>
+          <div style="margin-top: 15px; font-size: 13px;">
+            <p style="margin: 8px 0;">목표 각도: <span style="color: #00ffff; font-weight: bold;">${Math.round(startAngle)}°</span></p>
+            <p style="margin: 8px 0;">선택한 각도: <span style="color: #00ffff; font-weight: bold;">${Math.round(currentAngle)}°</span></p>
+            <p style="margin: 8px 0;">각도 차이: <span style="color: #00ffff; font-weight: bold;">${Math.round(error)}°</span></p>
+            <p style="margin: 12px 0; font-size: 16px; color: ${roundScore >= 0 ? '#00ff00' : '#ff0000'};">
+              획득 점수: <span style="font-weight: bold;">${roundScore >= 0 ? '+' : ''}${Math.round(roundScore)}</span>
+            </p>
+            <p style="margin: 12px 0 5px 0; font-size: 14px;">총 스코어: <span style="color: #00ffff; font-weight: bold;">${score}</span></p>
+          </div>
+          <button id="continue-btn" style="margin-top: 15px; padding: 10px 20px; font-size: 14px;">다음 라운드</button>
+        `;
+
+        // Set active section
+        setActiveSection("result-section");
+
+        document.getElementById("continue-btn").onclick = nextRound;
+      };
+    }
+
+    function nextRound() {
+      round++;
+      if (round > 5) return endGame();
+
+      // Show speed configuration before each round
+      setActiveSection("speed-config-section");
+      showSpeedConfig(startRound);
+    }
+
+    function endGame() {
+      gameArea.innerHTML = `
+        <h2>Game Over!</h2>
+        <p>Final Score: ${score}</p>
+        <button id="retry-btn">Retry</button>
+      `;
+      document.getElementById("retry-btn").onclick = startGame;
+    }
+
+    document.getElementById("start-btn").onclick = startGame;
+  </script>
+</body>
+</html>
