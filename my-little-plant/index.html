@@ -1,0 +1,1027 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Little Plant</title>
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body { background: linear-gradient(135deg, #ffeef8 0%, #e8f4ff 50%, #fff5e8 100%); color: #6b5b7d; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; display: grid; place-items: center; }
+    #wrap { width: min(100vw, 900px); padding: 16px; box-sizing: border-box; }
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    h1 { font-size: 15px; margin: 0; letter-spacing: 0.12em; color: #d4a5d8; text-transform: uppercase; opacity: 0.95; font-weight: 600; }
+    .hint { font-size: 12px; opacity: 0.75; }
+    .btn { appearance: none; border: 2px solid #f5c6e8; background: linear-gradient(135deg, #ffd4f4 0%, #e8c4ff 100%); color: #8b6b9d; padding: 6px 12px; border-radius: 999px; font-size: 12px; cursor: pointer; box-shadow: 0 2px 8px rgba(245,198,232,0.3); font-weight: 600; }
+    .btn:hover { filter: brightness(1.06); }
+    canvas { width: 100%; height: auto; display: block; border-radius: 20px; background: linear-gradient(180deg, #fff9fc, #fffef8); border: 3px solid #ffd4f4; box-shadow: 0 12px 30px rgba(245,198,232,0.25), inset 0 0 0 2px rgba(255,255,255,0.8); }
+    #modal { position: fixed; inset: 0; background: rgba(255,240,250,0.92); backdrop-filter: blur(12px); display: grid; place-items: center; z-index: 100; }
+    #modal.hidden { display: none; }
+    .modal-content { background: linear-gradient(135deg, #ffffff 0%, #fff5fc 100%); border: 3px solid #ffd4f4; border-radius: 24px; padding: 40px 48px; max-width: 480px; box-shadow: 0 20px 50px rgba(245,198,232,0.4); }
+    .modal-content h2 { margin: 0 0 20px; font-size: 28px; color: #d4a5d8; text-align: center; letter-spacing: 0.05em; font-weight: 700; }
+    .modal-content p { margin: 0 0 16px; line-height: 1.6; color: #8b7a9d; font-size: 15px; }
+    .modal-content ul { margin: 0 0 24px; padding-left: 24px; line-height: 1.8; color: #8b7a9d; font-size: 14px; }
+    .modal-content li { margin-bottom: 8px; }
+    .start-btn { appearance: none; border: 3px solid #ffa8e8; background: linear-gradient(135deg, #ffd4f4 0%, #ffb8e8 100%); color: #8b6b9d; padding: 14px 40px; border-radius: 999px; font-size: 16px; font-weight: 700; cursor: pointer; display: block; margin: 0 auto; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 6px 20px rgba(255,168,232,0.4); }
+    .start-btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,168,232,0.5); }
+    #gameOverModal { position: fixed; inset: 0; background: rgba(255,240,250,0.94); backdrop-filter: blur(12px); display: grid; place-items: center; z-index: 100; }
+    #gameOverModal.hidden { display: none; }
+    .gameover-content { background: linear-gradient(135deg, #ffffff 0%, #fff5fc 100%); border: 3px solid #ffd4f4; border-radius: 24px; padding: 36px 48px; max-width: 520px; box-shadow: 0 20px 50px rgba(245,198,232,0.4); text-align: center; }
+    .gameover-content h2 { margin: 0 0 24px; font-size: 32px; color: #d4a5d8; letter-spacing: 0.05em; font-weight: 700; }
+    .plant-display { width: 280px; height: 280px; margin: 0 auto 24px; background: linear-gradient(180deg, #fff9fc, #fffef8); border: 3px solid #ffd4f4; border-radius: 20px; position: relative; box-shadow: inset 0 2px 8px rgba(245,198,232,0.2); }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .stat-box { background: linear-gradient(135deg, #fff5fc 0%, #ffeef8 100%); border: 2px solid #ffd4f4; border-radius: 12px; padding: 12px; box-shadow: 0 2px 8px rgba(245,198,232,0.2); }
+    .stat-label { font-size: 12px; color: #b8a0c8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; font-weight: 600; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #d4a5d8; }
+    .play-again-btn { appearance: none; border: 3px solid #ffa8e8; background: linear-gradient(135deg, #ffd4f4 0%, #ffb8e8 100%); color: #8b6b9d; padding: 14px 40px; border-radius: 999px; font-size: 16px; font-weight: 700; cursor: pointer; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 6px 20px rgba(255,168,232,0.4); }
+    .play-again-btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,168,232,0.5); }
+  </style>
+</head>
+<body>
+  <div id="modal">
+    <div class="modal-content">
+      <h2>🌱 My Little Plant</h2>
+      <p>Welcome! Help your plant grow from a tiny seed to a beautiful flower by watering it at just the right moment.</p>
+      <ul>
+        <li><strong>Watch the blue needle</strong> rotate around the gauge</li>
+        <li><strong>Tap or press Space</strong> when it enters the blue target zone</li>
+        <li><strong>Perfect timing</strong> earns more points and faster growth</li>
+        <li><strong>Build combos</strong> for bonus points</li>
+        <li><strong>Grow your plant</strong> through 4 stages: Seed → Sprout → Leaves → Flower</li>
+      </ul>
+      <p style="text-align: center; margin-bottom: 28px; font-size: 13px; opacity: 0.8;">You have 45 seconds. Ready?</p>
+      <button class="start-btn" id="startBtn">Start Growing</button>
+    </div>
+  </div>
+  <div id="gameOverModal" class="hidden">
+    <div class="gameover-content">
+      <h2>🌸 Garden Complete!</h2>
+      <div class="plant-display">
+        <canvas id="plantCanvas" width="280" height="280"></canvas>
+      </div>
+      <div class="stats">
+        <div class="stat-box">
+          <div class="stat-label">Final Score</div>
+          <div class="stat-value" id="finalScore">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Best Combo</div>
+          <div class="stat-value" id="finalCombo">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Perfect</div>
+          <div class="stat-value" id="finalPerfect">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Good</div>
+          <div class="stat-value" id="finalGood">0</div>
+        </div>
+      </div>
+      <button class="play-again-btn" id="playAgainBtn">Play Again</button>
+    </div>
+  </div>
+  <div id="wrap">
+    <div class="bar">
+      <h1>My Little Plant</h1>
+      <div class="hint">Tap / Space to water · 45s session</div>
+      <button id="restart" class="btn" type="button">Restart</button>
+    </div>
+    <canvas id="game" width="900" height="600"></canvas>
+  </div>
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    const colors = {
+      ink: '#8b7a9d',
+      leaf: '#a8d8ff',
+      leafFade: 'rgba(168,216,255,0.35)',
+      deep: '#fff5fc',
+      ring: '#ffd4f4',
+      good: '#ffe8b8',
+      perfect: '#d4f4ff',
+      miss: '#ffc4d4',
+      accent: '#6ec8ff'
+    };
+
+    let last = performance.now();
+    let running = false;
+    let timeLeft = 45.0;
+    let angle = 0;
+    let speed = 1.6;
+    let zoneCenter = Math.PI * 1.5;
+    let zoneWidth = Math.PI * 0.22;
+    let drift = 0.35;
+
+    let score = 0;
+    let combo = 0;
+    let bestCombo = 0;
+    let totals = { perfect: 0, good: 0, miss: 0 };
+
+    const ripples = [];
+    let growth = 0; // visual growth level, increases on successful watering
+    let gameStarted = false; // tracks if player has clicked Start button
+    
+    // Audio context for background music
+    let audioContext = null;
+    let musicPlaying = false;
+
+    function resetSession(){
+      running = false;
+      timeLeft = 45.0;
+      angle = Math.random() * Math.PI * 2;
+      speed = 1.6;
+      zoneCenter = Math.PI * 1.5;
+      zoneWidth = Math.PI * 0.22;
+      drift = 0.35;
+      score = 0; combo = 0; bestCombo = 0; totals.perfect = 0; totals.good = 0; totals.miss = 0; ripples.length = 0; growth = 0;
+    }
+
+    function startGame(){
+      gameStarted = true;
+      document.getElementById('modal').classList.add('hidden');
+      startBackgroundMusic();
+    }
+    
+    function startBackgroundMusic(){
+      if(musicPlaying) return;
+      
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        musicPlaying = true;
+        
+        // Upbeat, energetic melody
+        const melody = [
+          {note: 659.25, duration: 0.15}, // E5
+          {note: 659.25, duration: 0.15}, // E5
+          {note: 783.99, duration: 0.15}, // G5
+          {note: 659.25, duration: 0.15}, // E5
+          {note: 523.25, duration: 0.3},  // C5
+          {note: 587.33, duration: 0.15}, // D5
+          {note: 659.25, duration: 0.3},  // E5
+          {note: 783.99, duration: 0.15}, // G5
+          {note: 880.00, duration: 0.15}, // A5
+          {note: 783.99, duration: 0.15}, // G5
+          {note: 659.25, duration: 0.3},  // E5
+          {note: 587.33, duration: 0.15}, // D5
+          {note: 659.25, duration: 0.15}, // E5
+          {note: 783.99, duration: 0.3},  // G5
+          {note: 659.25, duration: 0.15}, // E5
+          {note: 523.25, duration: 0.15}, // C5
+          {note: 587.33, duration: 0.3},  // D5
+          {note: 659.25, duration: 0.15}, // E5
+          {note: 783.99, duration: 0.15}, // G5
+          {note: 880.00, duration: 0.3},  // A5
+          {note: 783.99, duration: 0.15}, // G5
+          {note: 659.25, duration: 0.15}, // E5
+          {note: 587.33, duration: 0.15}, // D5
+          {note: 523.25, duration: 0.45}  // C5
+        ];
+        
+        function playMelody(startTime){
+          if(!musicPlaying) return;
+          
+          let currentTime = startTime;
+          
+          melody.forEach((note, index) => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(note.note, currentTime);
+            
+            // Punchier envelope for energetic sound
+            gainNode.gain.setValueAtTime(0, currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.12, currentTime + 0.02);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + note.duration);
+            
+            oscillator.start(currentTime);
+            oscillator.stop(currentTime + note.duration);
+            
+            currentTime += note.duration;
+          });
+          
+          // Loop the melody
+          const totalDuration = melody.reduce((sum, note) => sum + note.duration, 0);
+          setTimeout(() => {
+            if(musicPlaying) playMelody(audioContext.currentTime);
+          }, totalDuration * 1000);
+        }
+        
+        playMelody(audioContext.currentTime);
+      } catch(e) {
+        console.log('Audio not supported');
+      }
+    }
+    
+    function stopBackgroundMusic(){
+      musicPlaying = false;
+      if(audioContext){
+        audioContext.close();
+        audioContext = null;
+      }
+    }
+
+    function showGameOver(){
+      document.getElementById('gameOverModal').classList.remove('hidden');
+      document.getElementById('finalScore').textContent = Math.floor(score);
+      document.getElementById('finalCombo').textContent = bestCombo;
+      document.getElementById('finalPerfect').textContent = totals.perfect;
+      document.getElementById('finalGood').textContent = totals.good;
+      
+      // Draw final plant on modal canvas
+      const plantCanvas = document.getElementById('plantCanvas');
+      const plantCtx = plantCanvas.getContext('2d');
+      plantCtx.clearRect(0, 0, 280, 280);
+      
+      // Draw gradient background
+      const g = plantCtx.createLinearGradient(0, 0, 0, 280);
+      g.addColorStop(0, '#fff9fc');
+      g.addColorStop(1, '#fffef8');
+      plantCtx.fillStyle = g;
+      plantCtx.fillRect(0, 0, 280, 280);
+      
+      // Draw final plant with its own context
+      drawPlantOnContext(plantCtx, 140, 100, growth);
+    }
+
+    function playAgain(){
+      document.getElementById('gameOverModal').classList.add('hidden');
+      resetSession();
+    }
+
+    function polar(cx, cy, r, a){ return { x: cx + Math.cos(a)*r, y: cy + Math.sin(a)*r }; }
+
+    function drawRing(cx, cy, r1, r2, c){
+      ctx.beginPath(); ctx.arc(cx, cy, r2, 0, Math.PI*2); ctx.arc(cx, cy, r1, 0, Math.PI*2, true); ctx.closePath(); ctx.fillStyle = c; ctx.fill();
+    }
+
+    function drawArc(cx, cy, r1, r2, a0, a1, c){
+      ctx.beginPath(); ctx.arc(cx, cy, r2, a0, a1); ctx.arc(cx, cy, r1, a1, a0, true); ctx.closePath(); ctx.fillStyle = c; ctx.fill();
+    }
+
+    function drawPlantOnContext(context, cx, cy, growth){
+      // Growth stages: 0-2 seed, 3-10 sprout, 11-40 leaves (1-5), 41-50 flower
+      const potTopY = cy + 110;
+      const potH = 60;
+      const topW = 140;
+      const botW = 180;
+      const x = cx;
+      
+      // Woven basket body
+      context.fillStyle = '#d4a87c';
+      context.beginPath();
+      context.moveTo(x - topW/2, potTopY);
+      context.lineTo(x + topW/2, potTopY);
+      context.lineTo(x + botW/2, potTopY + potH);
+      context.lineTo(x - botW/2, potTopY + potH);
+      context.closePath();
+      context.fill();
+      
+      // Basket weave texture - horizontal strands
+      context.strokeStyle = '#c49860';
+      context.lineWidth = 6;
+      context.lineCap = 'butt';
+      for(let i=0; i<6; i++){
+        const y = potTopY + i * 10 + 5;
+        const wLeft = topW/2 + (botW - topW)/2 * (i/6);
+        const wRight = topW/2 + (botW - topW)/2 * (i/6);
+        context.beginPath();
+        context.moveTo(x - wLeft, y);
+        context.lineTo(x + wRight, y);
+        context.stroke();
+      }
+      
+      // Basket weave texture - vertical strands
+      context.strokeStyle = '#b88850';
+      context.lineWidth = 5;
+      for(let i=0; i<8; i++){
+        const xOffset = (i - 3.5) * 22;
+        const topX = x + xOffset * (topW/botW);
+        const botX = x + xOffset;
+        context.beginPath();
+        context.moveTo(topX, potTopY);
+        context.lineTo(botX, potTopY + potH);
+        context.stroke();
+      }
+      
+      // Basket rim with weave detail
+      context.fillStyle = '#c49860';
+      context.fillRect(x - topW/2 - 4, potTopY - 10, topW + 8, 14);
+      context.strokeStyle = '#a87840';
+      context.lineWidth = 2;
+      for(let i=0; i<10; i++){
+        context.beginPath();
+        context.moveTo(x - topW/2 + i * 15, potTopY - 10);
+        context.lineTo(x - topW/2 + i * 15, potTopY + 4);
+        context.stroke();
+      }
+      
+      // Bold outline around basket
+      context.strokeStyle = '#8b6840';
+      context.lineWidth = 3;
+      context.beginPath();
+      context.moveTo(x - topW/2, potTopY);
+      context.lineTo(x + topW/2, potTopY);
+      context.lineTo(x + botW/2, potTopY + potH);
+      context.lineTo(x - botW/2, potTopY + potH);
+      context.closePath();
+      context.stroke();
+      
+      // Soil with texture
+      context.fillStyle = '#8b6850';
+      context.beginPath();
+      context.ellipse(x, potTopY - 2, topW*0.46, 10, 0, 0, Math.PI*2);
+      context.fill();
+      // Soil highlights
+      context.fillStyle = '#a88060';
+      for(let i=0; i<8; i++){
+        const sx = x + (Math.random() - 0.5) * topW * 0.7;
+        const sy = potTopY - 2 + (Math.random() - 0.5) * 8;
+        context.beginPath();
+        context.arc(sx, sy, 2, 0, Math.PI*2);
+        context.fill();
+      }
+
+      const baseY = potTopY - 6;
+      const sway = Math.sin(performance.now()*0.002) * 4;
+
+      // Stage 1: Seed (0-2) - Cartoon style with bold outline
+      if(growth <= 2){
+        context.fillStyle = '#e8d4c8';
+        context.beginPath();
+        context.ellipse(x, baseY + 4, 10, 12, 0, 0, Math.PI*2);
+        context.fill();
+        // Bold outline
+        context.strokeStyle = '#8b7060';
+        context.lineWidth = 3;
+        context.stroke();
+        // Cute shine
+        context.fillStyle = '#fff';
+        context.beginPath();
+        context.arc(x - 3, baseY + 2, 2, 0, Math.PI*2);
+        context.fill();
+        return;
+      }
+
+      // Stage 2: Sprout (3-10) - Cartoon style
+      if(growth <= 10){
+        const sproutH = 10 + (growth - 3) * 5;
+        const tipY = baseY - sproutH;
+        // Stem with bold outline
+        context.strokeStyle = '#a8e6c8';
+        context.lineWidth = 6;
+        context.lineCap = 'round';
+        context.beginPath();
+        context.moveTo(x, baseY);
+        context.lineTo(x + sway*0.3, tipY);
+        context.stroke();
+        // Dark outline
+        context.strokeStyle = '#5a9070';
+        context.lineWidth = 2;
+        context.stroke();
+        // Cute bud at tip with face
+        context.fillStyle = '#c8f4e0';
+        context.beginPath();
+        context.arc(x + sway*0.3, tipY, 6, 0, Math.PI*2);
+        context.fill();
+        context.strokeStyle = '#5a9070';
+        context.lineWidth = 2;
+        context.stroke();
+        // Tiny eyes
+        context.fillStyle = '#5a9070';
+        context.beginPath();
+        context.arc(x + sway*0.3 - 2, tipY - 1, 1, 0, Math.PI*2);
+        context.arc(x + sway*0.3 + 2, tipY - 1, 1, 0, Math.PI*2);
+        context.fill();
+        return;
+      }
+
+      // Stage 3: Leaves (11-40) - Cartoon style with bold outlines
+      if(growth <= 40){
+        const numLeaves = Math.min(5, Math.floor((growth - 10) / 6));
+        const stemH = 50 + numLeaves * 12;
+        const tipY = baseY - stemH;
+        
+        // Thick cartoon stem
+        context.strokeStyle = '#a8e6c8';
+        context.lineWidth = 7;
+        context.lineCap = 'round';
+        context.beginPath();
+        context.moveTo(x, baseY);
+        context.quadraticCurveTo(x + sway, baseY - stemH*0.5, x, tipY);
+        context.stroke();
+        // Stem outline
+        context.strokeStyle = '#5a9070';
+        context.lineWidth = 3;
+        context.stroke();
+
+        // Cartoon leaves with bold outlines
+        for(let i=0; i<numLeaves; i++){
+          const t = (i+1)/(numLeaves+1.5);
+          const ly = baseY + (tipY - baseY) * t;
+          const lx = x + (sway * (1 - t) * 0.5);
+          const side = (i % 2 === 0) ? -1 : 1;
+          const leafSize = 18 + i * 2;
+          
+          // Leaf fill
+          context.fillStyle = '#c8f4e0';
+          context.beginPath();
+          context.ellipse(lx + side*22, ly, leafSize, leafSize*0.6, side*0.5, 0, Math.PI*2);
+          context.fill();
+          
+          // Bold leaf outline
+          context.strokeStyle = '#5a9070';
+          context.lineWidth = 3;
+          context.stroke();
+          
+          // Leaf vein
+          context.strokeStyle = '#8ac8a8';
+          context.lineWidth = 2;
+          context.beginPath();
+          context.moveTo(lx, ly);
+          context.lineTo(lx + side*22, ly);
+          context.stroke();
+          
+          // Cute highlight on leaf
+          context.fillStyle = 'rgba(255,255,255,0.5)';
+          context.beginPath();
+          context.ellipse(lx + side*18, ly - 3, 4, 3, side*0.5, 0, Math.PI*2);
+          context.fill();
+        }
+        return;
+      }
+
+      // Stage 4: Flower (41-50) - Cartoon style with expressive features
+      const stemH2 = 110;
+      const tipY2 = baseY - stemH2;
+      
+      // Thick cartoon stem
+      context.strokeStyle = '#a8e6c8';
+      context.lineWidth = 7;
+      context.lineCap = 'round';
+      context.beginPath();
+      context.moveTo(x, baseY);
+      context.quadraticCurveTo(x + sway, baseY - stemH2*0.5, x, tipY2);
+      context.stroke();
+      // Stem outline
+      context.strokeStyle = '#5a9070';
+      context.lineWidth = 3;
+      context.stroke();
+
+      // Cartoon leaves with bold outlines
+      for(let i=0; i<5; i++){
+        const t = (i+1)/6.5;
+        const ly = baseY + (tipY2 - baseY) * t;
+        const lx = x + (sway * (1 - t) * 0.5);
+        const side = (i % 2 === 0) ? -1 : 1;
+        const leafSize = 18 + i * 2;
+        
+        context.fillStyle = '#c8f4e0';
+        context.beginPath();
+        context.ellipse(lx + side*22, ly, leafSize, leafSize*0.6, side*0.5, 0, Math.PI*2);
+        context.fill();
+        
+        context.strokeStyle = '#5a9070';
+        context.lineWidth = 3;
+        context.stroke();
+        
+        context.strokeStyle = '#8ac8a8';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(lx, ly);
+        context.lineTo(lx + side*22, ly);
+        context.stroke();
+        
+        context.fillStyle = 'rgba(255,255,255,0.5)';
+        context.beginPath();
+        context.ellipse(lx + side*18, ly - 3, 4, 3, side*0.5, 0, Math.PI*2);
+        context.fill();
+      }
+
+      const flowerX = x;
+      const flowerY = tipY2;
+      const petalCount = 6;
+      const petalR = 14;
+      const bloomProgress = Math.min(1, (growth - 40) / 10);
+      
+      // Cartoon petals with bold outlines
+      for(let i=0; i<petalCount; i++){
+        const angle2 = (i / petalCount) * Math.PI * 2;
+        const px = flowerX + Math.cos(angle2) * petalR * bloomProgress;
+        const py = flowerY + Math.sin(angle2) * petalR * bloomProgress;
+        
+        context.fillStyle = '#ffc4e8';
+        context.beginPath();
+        context.ellipse(px, py, 10*bloomProgress, 7*bloomProgress, angle2, 0, Math.PI*2);
+        context.fill();
+        
+        context.strokeStyle = '#d88cb8';
+        context.lineWidth = 2.5;
+        context.stroke();
+        
+        context.fillStyle = 'rgba(255,255,255,0.6)';
+        context.beginPath();
+        context.ellipse(px + Math.cos(angle2)*3, py + Math.sin(angle2)*3, 3*bloomProgress, 2*bloomProgress, angle2, 0, Math.PI*2);
+        context.fill();
+      }
+      
+      // Flower center with face
+      context.fillStyle = '#ffe8a8';
+      context.beginPath();
+      context.arc(flowerX, flowerY, 7*bloomProgress, 0, Math.PI*2);
+      context.fill();
+      
+      context.strokeStyle = '#d8b870';
+      context.lineWidth = 2.5;
+      context.stroke();
+      
+      // Cute face on flower
+      if(bloomProgress > 0.5){
+        context.fillStyle = '#d88cb8';
+        context.beginPath();
+        context.arc(flowerX - 2.5, flowerY - 1, 1.2, 0, Math.PI*2);
+        context.arc(flowerX + 2.5, flowerY - 1, 1.2, 0, Math.PI*2);
+        context.fill();
+        context.strokeStyle = '#d88cb8';
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.arc(flowerX, flowerY + 1, 3, 0.2, Math.PI - 0.2);
+        context.stroke();
+      }
+    }
+
+    function drawPlant(cx, cy, growth){
+      // Growth stages: 0-2 seed, 3-10 sprout, 11-40 leaves (1-5), 41-50 flower
+      const potTopY = cy + 110;
+      const potH = 60;
+      const topW = 140;
+      const botW = 180;
+      const x = cx;
+      
+      // Pot body (trapezoid)
+      ctx.fillStyle = '#ffcba4';
+      ctx.beginPath();
+      ctx.moveTo(x - topW/2, potTopY);
+      ctx.lineTo(x + topW/2, potTopY);
+      ctx.lineTo(x + botW/2, potTopY + potH);
+      ctx.lineTo(x - botW/2, potTopY + potH);
+      ctx.closePath();
+      ctx.fill();
+      // Rim
+      ctx.fillStyle = '#ffd4b8';
+      ctx.fillRect(x - topW/2 - 4, potTopY - 8, topW + 8, 12);
+      // Soil
+      ctx.fillStyle = '#d4a890';
+      ctx.beginPath();
+      ctx.ellipse(x, potTopY - 2, topW*0.46, 10, 0, 0, Math.PI*2);
+      ctx.fill();
+
+      const baseY = potTopY - 6;
+      const sway = Math.sin(performance.now()*0.002) * 4;
+
+      // Stage 1: Seed (0-2)
+      if(growth <= 2){
+        ctx.fillStyle = '#c4b0a0';
+        ctx.beginPath();
+        ctx.ellipse(x, baseY + 4, 8, 10, 0, 0, Math.PI*2);
+        ctx.fill();
+        // Seed outline for visibility
+        ctx.strokeStyle = '#a89080';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        return;
+      }
+
+      // Stage 2: Sprout (3-10)
+      if(growth <= 10){
+        const sproutH = 10 + (growth - 3) * 5;
+        const tipY = baseY - sproutH;
+        ctx.strokeStyle = '#88d4a8';
+        ctx.lineWidth = 5;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x, baseY);
+        ctx.lineTo(x + sway*0.3, tipY);
+        ctx.stroke();
+        // Tiny bud at tip
+        ctx.fillStyle = '#a8e8c8';
+        ctx.beginPath();
+        ctx.arc(x + sway*0.3, tipY, 5, 0, Math.PI*2);
+        ctx.fill();
+        // Bud outline
+        ctx.strokeStyle = '#70b890';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        return;
+      }
+
+      // Stage 3: Leaves (11-40)
+      if(growth <= 40){
+        const numLeaves = Math.min(5, Math.floor((growth - 10) / 6));
+        const stemH = 50 + numLeaves * 12;
+        const tipY = baseY - stemH;
+        
+        // Pastel stem
+        ctx.strokeStyle = '#88d4a8';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x, baseY);
+        ctx.quadraticCurveTo(x + sway, baseY - stemH*0.5, x, tipY);
+        ctx.stroke();
+
+        for(let i=0; i<numLeaves; i++){
+          const t = (i+1)/(numLeaves+1.5);
+          const ly = baseY + (tipY - baseY) * t;
+          const lx = x + (sway * (1 - t) * 0.5);
+          const side = (i % 2 === 0) ? -1 : 1;
+          const leafSize = 16 + i * 2;
+          
+          // Soft pastel leaf color
+          ctx.fillStyle = '#a8e8c8';
+          ctx.beginPath();
+          ctx.ellipse(lx + side*20, ly, leafSize, leafSize*0.5, side*0.5, 0, Math.PI*2);
+          ctx.fill();
+          
+          // Soft leaf outline
+          ctx.strokeStyle = '#70b890';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Leaf vein
+          ctx.strokeStyle = '#88d4a8';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(lx, ly);
+          ctx.lineTo(lx + side*20, ly);
+          ctx.stroke();
+        }
+        return;
+      }
+
+      // Stage 4: Flower (41-50)
+      const stemH = 110;
+      const tipY = baseY - stemH;
+      
+      // Pastel stem
+      ctx.strokeStyle = '#88d4a8';
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, baseY);
+      ctx.quadraticCurveTo(x + sway, baseY - stemH*0.5, x, tipY);
+      ctx.stroke();
+
+      for(let i=0; i<5; i++){
+        const t = (i+1)/6.5;
+        const ly = baseY + (tipY - baseY) * t;
+        const lx = x + (sway * (1 - t) * 0.5);
+        const side = (i % 2 === 0) ? -1 : 1;
+        const leafSize = 16 + i * 2;
+        
+        // Soft pastel leaf color
+        ctx.fillStyle = '#a8e8c8';
+        ctx.beginPath();
+        ctx.ellipse(lx + side*20, ly, leafSize, leafSize*0.5, side*0.5, 0, Math.PI*2);
+        ctx.fill();
+        
+        // Soft leaf outline
+        ctx.strokeStyle = '#70b890';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Leaf vein
+        ctx.strokeStyle = '#88d4a8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(lx, ly);
+        ctx.lineTo(lx + side*20, ly);
+        ctx.stroke();
+      }
+
+      const flowerX = x;
+      const flowerY = tipY;
+      const petalCount = 6;
+      const petalR = 12;
+      const bloomProgress = Math.min(1, (growth - 40) / 10);
+      
+      // Soft pastel flower petals
+      for(let i=0; i<petalCount; i++){
+        const angle = (i / petalCount) * Math.PI * 2;
+        const px = flowerX + Math.cos(angle) * petalR * bloomProgress;
+        const py = flowerY + Math.sin(angle) * petalR * bloomProgress;
+        ctx.fillStyle = '#ffb3d9';
+        ctx.beginPath();
+        ctx.ellipse(px, py, 8*bloomProgress, 6*bloomProgress, angle, 0, Math.PI*2);
+        ctx.fill();
+        // Soft petal outline
+        ctx.strokeStyle = '#e898c8';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      
+      // Soft golden center
+      ctx.fillStyle = '#ffe8a8';
+      ctx.beginPath();
+      ctx.arc(flowerX, flowerY, 5*bloomProgress, 0, Math.PI*2);
+      ctx.fill();
+      // Soft center outline
+      ctx.strokeStyle = '#e8c888';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    function wrapAngle(a){ while(a < -Math.PI) a += Math.PI*2; while(a > Math.PI) a -= Math.PI*2; return a; }
+
+    function gradeHit(a){
+      const d = Math.abs(wrapAngle(a - zoneCenter));
+      const perfect = zoneWidth*0.23;
+      const good = zoneWidth*0.55;
+      if(d <= perfect) return 'perfect';
+      if(d <= good) return 'good';
+      return 'miss';
+    }
+
+    function playGrowthSound(isPerfect){
+      if(!audioContext) return;
+      
+      try {
+        const now = audioContext.currentTime;
+        
+        if(isPerfect){
+          // Perfect hit: Blooming flower sound (ascending chime)
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + i * 0.05);
+            
+            gain.gain.setValueAtTime(0, now + i * 0.05);
+            gain.gain.linearRampToValueAtTime(0.15, now + i * 0.05 + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.05 + 0.2);
+            
+            osc.start(now + i * 0.05);
+            osc.stop(now + i * 0.05 + 0.2);
+          });
+        } else {
+          // Good hit: Growing sprout sound (gentle upward sweep)
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(392, now);
+          osc.frequency.exponentialRampToValueAtTime(587.33, now + 0.15);
+          
+          gain.gain.setValueAtTime(0, now);
+          gain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          
+          osc.start(now);
+          osc.stop(now + 0.15);
+        }
+      } catch(e) {
+        console.log('Sound effect error');
+      }
+    }
+    
+    function registerHit(kind, center){
+      if(kind === 'perfect'){
+        combo += 2;
+        totals.perfect++;
+        score += Math.round(150 * (1 + combo*0.08));
+        ripples.push({ x:center.x, y:center.y, r:18, a:1, color: colors.perfect });
+        growth = Math.min(50, growth + 2);
+        playGrowthSound(true);
+      } else if(kind === 'good'){
+        combo += 1;
+        totals.good++;
+        score += Math.round(80 * (1 + combo*0.05));
+        ripples.push({ x:center.x, y:center.y, r:16, a:1, color: colors.good });
+        growth = Math.min(50, growth + 1);
+        playGrowthSound(false);
+      } else {
+        totals.miss++;
+        combo = 0;
+        ripples.push({ x:center.x, y:center.y, r:16, a:1, color: colors.miss });
+      }
+      if(combo > bestCombo) bestCombo = combo;
+    }
+
+    function update(dt){
+      if(!running) return;
+      timeLeft -= dt;
+      if(timeLeft <= 0){ 
+        timeLeft = 0; 
+        running = false;
+        showGameOver();
+      }
+      angle += speed * dt * Math.PI;
+      zoneCenter += Math.sin(performance.now()*0.001) * drift * dt;
+      speed += dt * 0.03;
+      zoneWidth = Math.max(Math.PI*0.12, zoneWidth - dt*0.002);
+
+      for(let i=ripples.length-1;i>=0;i--){
+        const r = ripples[i];
+        r.r += 60*dt; r.a -= 0.9*dt;
+        if(r.a <= 0) ripples.splice(i,1);
+      }
+    }
+
+    function draw(){
+      ctx.clearRect(0,0,W,H);
+      const cx = W/2, cy = H*0.56;
+
+      // Cute forest background
+      // Sky gradient
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
+      skyGrad.addColorStop(0, '#d4e8f4');
+      skyGrad.addColorStop(0.6, '#e8f4e8');
+      skyGrad.addColorStop(1, '#f4f8e8');
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, W, H);
+      
+      // Soft clouds
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      for(let i=0; i<5; i++){
+        const cloudX = (i * 220 + Math.sin(performance.now()*0.0003 + i)*20) % (W + 100) - 50;
+        const cloudY = 40 + i * 25;
+        ctx.beginPath();
+        ctx.arc(cloudX, cloudY, 30, 0, Math.PI*2);
+        ctx.arc(cloudX + 25, cloudY - 10, 25, 0, Math.PI*2);
+        ctx.arc(cloudX + 50, cloudY, 30, 0, Math.PI*2);
+        ctx.fill();
+      }
+      
+      // Distant trees (background layer)
+      ctx.fillStyle = 'rgba(160,200,180,0.3)';
+      for(let i=0; i<8; i++){
+        const treeX = i * 120 + 40;
+        const treeY = H * 0.65;
+        ctx.beginPath();
+        ctx.moveTo(treeX, treeY);
+        ctx.lineTo(treeX - 25, treeY + 80);
+        ctx.lineTo(treeX + 25, treeY + 80);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(treeX, treeY + 30);
+        ctx.lineTo(treeX - 30, treeY + 100);
+        ctx.lineTo(treeX + 30, treeY + 100);
+        ctx.closePath();
+        ctx.fill();
+      }
+      
+      // Ground with grass texture
+      const groundY = H * 0.75;
+      const groundGrad = ctx.createLinearGradient(0, groundY, 0, H);
+      groundGrad.addColorStop(0, '#c8e6c8');
+      groundGrad.addColorStop(1, '#b8d8b8');
+      ctx.fillStyle = groundGrad;
+      ctx.fillRect(0, groundY, W, H - groundY);
+      
+      // Grass blades
+      ctx.strokeStyle = 'rgba(160,200,160,0.4)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      for(let i=0; i<30; i++){
+        const gx = (i * 35 + Math.sin(i)*10) % W;
+        const gy = groundY + Math.random() * 20;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy + 15);
+        ctx.quadraticCurveTo(gx + 3, gy + 5, gx, gy);
+        ctx.stroke();
+      }
+      
+      // Cute mushrooms
+      for(let i=0; i<4; i++){
+        const mx = 100 + i * 220;
+        const my = groundY + 25;
+        // Stem
+        ctx.fillStyle = '#f4e8d8';
+        ctx.fillRect(mx - 8, my, 16, 25);
+        // Cap
+        ctx.fillStyle = i % 2 === 0 ? '#ff9999' : '#ffb3b3';
+        ctx.beginPath();
+        ctx.ellipse(mx, my, 20, 12, 0, 0, Math.PI, true);
+        ctx.fill();
+        // Spots
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath();
+        ctx.arc(mx - 8, my - 5, 3, 0, Math.PI*2);
+        ctx.arc(mx + 6, my - 3, 4, 0, Math.PI*2);
+        ctx.fill();
+      }
+      
+      // Soft vignette
+      const g = ctx.createRadialGradient(cx, cy, 60, cx, cy, Math.max(W,H)*0.6);
+      g.addColorStop(0, 'rgba(200,230,200, 0.0)');
+      g.addColorStop(1, 'rgba(180,210,180, 0.15)');
+      ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+      ctx.fillStyle = 'rgba(255,240,250,0.4)';
+      ctx.beginPath(); ctx.arc(cx, cy, 220, 0, Math.PI*2); ctx.fill();
+
+      drawRing(cx, cy, 120, 200, 'rgba(255,212,244,0.3)');
+      drawRing(cx, cy, 200, 210, 'rgba(255,184,232,0.25)');
+
+      const a0 = zoneCenter - zoneWidth*0.5;
+      const a1 = zoneCenter + zoneWidth*0.5;
+      drawArc(cx, cy, 120, 200, a0, a1, colors.leafFade);
+
+      for(let k=0;k<36;k++){
+        const a = (k/36)*Math.PI*2;
+        const p1 = polar(cx,cy,120,a);
+        const p2 = polar(cx,cy,200,a);
+        ctx.strokeStyle = 'rgba(255,212,244,0.15)'; ctx.lineWidth = (k%6===0)?2:1;
+        ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+      }
+
+      // Plant visual
+      drawPlant(cx, cy, growth);
+
+      const pCtr = polar(cx, cy, 160, angle);
+      ctx.strokeStyle = colors.accent; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(pCtr.x, pCtr.y); ctx.stroke();
+      ctx.fillStyle = colors.accent; ctx.beginPath(); ctx.arc(pCtr.x, pCtr.y, 8, 0, Math.PI*2); ctx.fill();
+
+      ripples.forEach(r=>{ ctx.globalAlpha = Math.max(0, r.a); ctx.strokeStyle = r.color; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.stroke(); ctx.globalAlpha = 1; });
+
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillStyle = colors.ink; ctx.font = '700 26px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      ctx.fillText(String(score).padStart(4,'0'), 18, 16);
+      ctx.globalAlpha = 0.75; ctx.font = '13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      ctx.fillText('Combo ' + combo + (combo>0?' ✧':''), 18, 46); ctx.globalAlpha = 1;
+
+      ctx.textAlign = 'right'; ctx.textBaseline = 'top';
+      ctx.font = '700 22px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      ctx.fillText(timeLeft.toFixed(1) + 's', W-18, 16);
+
+      if(!running && timeLeft === 45 && gameStarted){
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = colors.ink; ctx.font = '700 36px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText('Begin Watering', W/2, H*0.22);
+        ctx.globalAlpha = 0.8; ctx.font = '16px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText('Tap / Space as the blue needle enters the blue zone', W/2, H*0.22 + 36);
+        ctx.globalAlpha = 1;
+        drawScoreHints(cx, cy);
+      }
+
+      if(!running && timeLeft === 0){
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = colors.ink; ctx.font = '700 40px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText('Session Complete', W/2, H*0.2);
+        ctx.globalAlpha = 0.85; ctx.font = '18px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText('Score ' + score + '   •   Best Combo ' + bestCombo, W/2, H*0.2 + 34);
+        ctx.globalAlpha = 0.75; ctx.font = '15px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+        ctx.fillText('Perfect ' + totals.perfect + '   •   Good ' + totals.good + '   •   Miss ' + totals.miss, W/2, H*0.2 + 60);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function drawScoreHints(cx, cy){
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.font = '13px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial';
+      ctx.fillStyle = colors.perfect; ctx.fillText('Perfect +150, +2 combo', cx, cy + 230);
+      ctx.globalAlpha = 0.8; ctx.fillStyle = colors.good; ctx.fillText('Good +80, +1 combo', cx, cy + 250);
+      ctx.globalAlpha = 0.8; ctx.fillStyle = colors.miss; ctx.fillText('Miss resets combo', cx, cy + 270); ctx.globalAlpha = 1;
+    }
+
+    function onPress(){
+      if(!gameStarted) return;
+      if(!running && timeLeft === 45){ running = true; return; }
+      if(!running && timeLeft === 0){ resetSession(); return; }
+      const cx = W/2, cy = H*0.56; const p = polar(cx, cy, 160, angle);
+      const kind = gradeHit(angle);
+      registerHit(kind, p);
+    }
+
+    canvas.addEventListener('pointerdown', onPress);
+    window.addEventListener('keydown', (e)=>{ if(e.code === 'Space'){ e.preventDefault(); onPress(); } });
+    document.getElementById('restart').addEventListener('click', ()=>{ resetSession(); });
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('playAgainBtn').addEventListener('click', playAgain);
+
+    function loop(now){
+      const dt = Math.min(1/30, (now - last)/1000);
+      last = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    resetSession();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

@@ -51,9 +51,6 @@
 
     .hud { display: flex; align-items: center; gap: 12px; }
     .pill { background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); border-radius: 999px; padding: 8px 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
-    .dots { display: grid; grid-auto-flow: column; gap: 6px; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,0.1); }
-    .dot.done { background: var(--accent); box-shadow: 0 0 8px rgba(109,240,194,0.6); }
     .iconbtn { background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); color: #2a3655; border-radius: 999px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
 
     .board {
@@ -62,6 +59,10 @@
       border: 1px solid rgba(0,0,0,0.06);
       display: grid; place-items: center;
     }
+    .big-counter { position: absolute; top: 10%; left: 50%; transform: translateX(-50%);
+      font-weight: 900; font-size: clamp(42px, 9vw, 72px); letter-spacing: 1px; color:#2a3655;
+      text-shadow: 0 8px 18px rgba(0,0,0,0.18), 0 1px 0 rgba(255,255,255,0.6);
+      z-index: 4; pointer-events: none; opacity: 0.95; }
     .plate {
       position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%);
       width: 86%; aspect-ratio: 1 / 1; border-radius: 50%;
@@ -168,6 +169,8 @@
 
     .lose { color: var(--danger); }
     .win { color: var(--accent); }
+    .final-score { font-weight: 900; font-size: clamp(40px, 10vw, 72px); line-height: 1; color: #2a3655; letter-spacing: 1px; text-shadow: 0 12px 28px rgba(0,0,0,0.28), 0 1px 0 rgba(255,255,255,0.8); display: inline-block; margin: 6px 0; }
+    .best-note { font-size: 13px; color: #586a92; margin-top: 6px; display: block; }
   </style>
 </head>
 <body>
@@ -175,11 +178,11 @@
     <div class="topbar">
       <div>
         <div class="title">Kimbap Cutter</div>
-        <div class="sub">Make 10 cuts. If it bursts even once, you lose.</div>
+        <div class="sub">Slice as many pieces as you can in 10 seconds.</div>
       </div>
       <div class="hud">
-        <div class="pill"><span id="cutsLabel">Cuts</span><div class="dots" id="dots"></div></div>
-        <div class="pill" title="Burst chance">💥 <span id="chance">--%</span></div>
+        <div class="pill" title="Score">🏆 Score <span id="scoreVal">0</span></div>
+        <div class="pill" title="Time Remaining">⏱ <span id="timer">00:10</span></div>
         <button class="iconbtn" id="musicBtn" title="Toggle music">🔊 BGM</button>
       </div>
     </div>
@@ -187,20 +190,30 @@
     <div class="overlay" id="startOverlay">
       <div class="panel">
         <div style="font-weight:800; margin-bottom:10px; color:#2a3655;">Kimbap Cutter</div>
-        <div style="font-size:13px; color:#586a92; margin-bottom:16px;">Make 10 cuts without bursting the roll.</div>
-        <button id="startBtn" class="start-btn" aria-label="Start Game">Start Game</button>
+        <div style="font-size:13px; color:#586a92; margin-bottom:12px;">How to Play</div>
+        <div style="text-align:left; font-size:13px; color:#2a3655; line-height:1.5; margin:0 auto 14px; max-width:28em;">
+          <ul style="margin:0 0 10px 18px; padding:0;">
+            <li><b>Goal</b>: Cut as many pieces as possible in <b>10 seconds</b>.</li>
+            <li><b>Score</b>: Every clean cut = +1 point. No penalties.</li>
+            <li><b>Controls</b>: Click the <b>Cut</b> button, tap the board, or press <b>Space/Enter</b>.</li>
+            <li><b>Restart</b>: Press <b>R</b> or use <b>Restart</b>.</li>
+          </ul>
+          <div style="font-size:12px; color:#586a92;">Tip: Cut quickly—your best score is saved.</div>
+        </div>
+        <button id="startBtn" class="start-btn" aria-label="Start Game">Start</button>
       </div>
     </div>
 
     <div class="overlay hidden" id="gameOver">
       <div class="panel">
-        <div id="goTitle" style="font-weight:800; margin-bottom:10px; color:#2a3655;">Game Over</div>
-        <div id="goMsg" style="font-size:13px; color:#586a92; margin-bottom:16px;">Try again and beat your luck!</div>
-        <button id="retryBtn" class="retry-btn" aria-label="Retry">Retry</button>
+        <div id="goTitle" style="font-weight:800; margin-bottom:10px; color:#2a3655;">Time's Up!</div>
+        <div id="goMsg" style="font-size:13px; color:#586a92; margin-bottom:16px;">Great run! Try to beat your best score.</div>
+        <button id="retryBtn" class="retry-btn" aria-label="Play Again">Play Again</button>
       </div>
     </div>
 
     <div class="board">
+      <div class="big-counter" id="bigCounter">0</div>
       <div class="knife" id="knife"><div class="blade"></div><div class="handle"></div></div>
       <div class="plate"></div>
       <div class="plate-overlay"><div class="pieces" id="pieces"></div></div>
@@ -227,12 +240,12 @@
     </div>
 
     <div class="bottombar">
-      <div class="msg" id="msg">Tap Start Game to begin!</div>
+      <div class="msg" id="msg">Tap Start to begin and slice fast!</div>
       <div class="row">
         <button class="btn" id="cutBtn" aria-label="Cut">✂️ Cut</button>
         <button class="btn secondary" id="resetBtn" aria-label="Restart">Restart</button>
       </div>
-      <div class="hint">Tip: Burst chance slightly increases with each cut. Good luck!</div>
+      <div class="hint">Tip: Cut as many pieces as you can!</div>
     </div>
   </div>
   <div id="yt-holder" class="yt-holder"></div>
@@ -240,15 +253,15 @@
 
   <script>
   (function(){
-    const dotsEl = document.getElementById('dots');
-    const chanceEl = document.getElementById('chance');
+    const scoreValEl = document.getElementById('scoreVal');
+    const bigCounterEl = document.getElementById('bigCounter');
+    const timerEl = document.getElementById('timer');
     const msgEl = document.getElementById('msg');
     const cutBtn = document.getElementById('cutBtn');
     const resetBtn = document.getElementById('resetBtn');
     const knife = document.getElementById('knife');
     const roll = document.getElementById('roll');
     const crack = document.getElementById('crack');
-    const cutsLabel = document.getElementById('cutsLabel');
     const piecesEl = document.getElementById('pieces');
     const musicBtn = document.getElementById('musicBtn');
     const startBtn = document.getElementById('startBtn');
@@ -256,22 +269,27 @@
     const retryBtn = document.getElementById('retryBtn');
     const goTitle = document.getElementById('goTitle');
     const goMsg = document.getElementById('goMsg');
+    const hintEl = document.querySelector('.hint');
 
-    const MAX_CUTS = 10;
+    const TIMER_MS = 10_000;
 
     let state = {
-      cuts: 0,
+      score: 0,
       done: false,
       burst: false,
       started: false,
       extraLifeUsed: false,
       baseChance: 0.10,
-      perCutRamp: 0.035,
+      perCutRamp: 0.030,
     };
+    let cutting = false;
+    let timerId = null;
+    let timeLeft = TIMER_MS;
+    let bestScore = Number(localStorage.getItem('kimbap_best_score')||'0');
 
     // YouTube IFrame Player API integration
     const VIDEO_ID = 'a7b2HAttS8s';
-    let ytPlayer = null; let ytReady = false; let startRequested = false; let musicOn = true;
+    let ytPlayer = null; let ytReady = false; let startRequested = false; let musicOn = true; let mutedByPolicy = false; let hintTimerId = null;
     window.onYouTubeIframeAPIReady = function() {
       ytPlayer = new YT.Player('yt-holder', {
         height: '1', width: '1', videoId: VIDEO_ID,
@@ -279,14 +297,23 @@
         events: { onReady: function() { ytReady = true; ytPlayer.setVolume(80); if (startRequested && musicOn) playBgmWithFallback(); } }
       });
     };
-    function playBgmWithFallback(){ try{ ytPlayer.unMute(); const p = ytPlayer.playVideo(); if(p && p.catch) p.catch(()=>{ ytPlayer.mute(); ytPlayer.playVideo(); }); } catch{}
+    function showTempHint(text, ms=2600){
+      if (!hintEl) return;
+      const prev = hintEl.getAttribute('data-prev') ?? hintEl.textContent;
+      hintEl.setAttribute('data-prev', prev);
+      hintEl.textContent = text;
+      if (hintTimerId) clearTimeout(hintTimerId);
+      hintTimerId = setTimeout(()=>{ hintEl.textContent = prev; hintTimerId = null; }, ms);
     }
-    function startMusic(){ startRequested = true; if (ytReady && ytPlayer) { if (musicOn) playBgmWithFallback(); } }
-    function toggleMusic(){ if (!ytPlayer) { startMusic(); return; } const muted = ytPlayer.isMuted(); if (muted) { ytPlayer.unMute(); musicOn = true; musicBtn.textContent = '🔊 BGM'; } else { ytPlayer.mute(); musicOn = false; musicBtn.textContent = '🔈 BGM'; } }
 
-    function currentBurstChance(){ const c = state.baseChance + state.perCutRamp * state.cuts; return Math.min(0.65, Math.max(0, c)); }
-    function fmtPct(p){ return Math.round(p * 100); }
-    function renderDots(){ dotsEl.innerHTML = ''; for(let i=0;i<MAX_CUTS;i++){ const d=document.createElement('div'); d.className='dot'+(i<state.cuts?' done':''); dotsEl.appendChild(d);} cutsLabel.textContent = `Cuts ${state.cuts}/${MAX_CUTS}`; }
+    function playBgmWithFallback(){ try{ ytPlayer?.unMute?.(); const p = ytPlayer?.playVideo?.(); if(p && p.catch) p.catch(()=>{ ytPlayer?.mute?.(); ytPlayer?.playVideo?.(); mutedByPolicy = true; musicOn = false; musicBtn.textContent = '🔈 BGM'; showTempHint('Music muted by browser — tap BGM to enable'); }); } catch{}
+    }
+    function startMusic(){ startRequested = true; startChipBgm(); }
+    function toggleMusic(){ toggleChipBgm(); }
+
+    function currentBurstChance(){ const c = state.baseChance + state.perCutRamp * state.score; return Math.min(0.65, Math.max(0, c)); }
+    function fmtTime(ms){ const s = Math.max(0, Math.ceil(ms/1000)); const m = Math.floor(s/60); const ss = (s%60).toString().padStart(2,'0'); return `${m}:${ss}`; }
+    function renderScore(){ scoreValEl.textContent = String(state.score); if (bigCounterEl) bigCounterEl.textContent = String(state.score); }
 
     // Plate positions: ensure all slices are visible in lower half (two rows)
     const pieceSpots = [
@@ -308,7 +335,7 @@
       piecesEl.appendChild(wrap);
     }
 
-    function updateHUD(){ chanceEl.textContent = fmtPct(currentBurstChance()) + '%'; }
+    function updateHUD(){ timerEl.textContent = fmtTime(timeLeft); }
     function setMessage(text, cls){ msgEl.classList.remove('lose','win'); if (cls) msgEl.classList.add(cls); msgEl.textContent = text; }
     function screenShake(){ roll.classList.remove('shake'); void roll.offsetWidth; roll.classList.add('shake'); }
     function animateKnife(){ knife.classList.remove('slice'); void knife.offsetWidth; knife.classList.add('slice'); }
@@ -360,52 +387,122 @@
     function passBeep(){ sliceSfx(); }
     function winJingle(){ simpleBeep(660,120,'triangle',0.06); setTimeout(()=>simpleBeep(880,140,'square',0.06),130); }
 
-    function showGameOver(win=false){
-      if (win) { goTitle.textContent = 'You Win!'; goMsg.textContent = 'Perfect 10 cuts. Want to play again?'; }
-      else { goTitle.textContent = 'Game Over'; goMsg.textContent = 'The roll burst! Try your luck again.'; }
+    // Chip-style background music (WebAudio)
+    const chip = { ctx:null, gain:null, vol:0.07, isPlaying:false, isMuted:false, loopId:null };
+    function ensureCtx(){
+      try{ chip.ctx = chip.ctx || new (window.AudioContext||window.webkitAudioContext)(); }catch{}
+      if (chip.ctx && chip.ctx.state === 'suspended') { chip.ctx.resume?.(); }
+      if (chip.ctx && !chip.gain){ chip.gain = chip.ctx.createGain(); chip.gain.gain.value = chip.isMuted ? 0 : chip.vol; chip.gain.connect(chip.ctx.destination); }
+    }
+    function note(type, freq, start, dur, gain=0.22){
+      if (!chip.ctx) return; const osc = chip.ctx.createOscillator(); const g = chip.ctx.createGain();
+      osc.type = type; osc.frequency.value = freq; g.gain.value = 0.0001;
+      osc.connect(g); g.connect(chip.gain);
+      const t = chip.ctx.currentTime + start; g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(gain, t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      osc.start(t); osc.stop(t+dur+0.02);
+    }
+    function hat(start){
+      if (!chip.ctx) return; const osc = chip.ctx.createOscillator(); const g = chip.ctx.createGain();
+      osc.type = 'square'; osc.frequency.value = 4000; osc.connect(g); g.connect(chip.gain);
+      const t = chip.ctx.currentTime + start; g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.08, t+0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.05);
+      osc.start(t); osc.stop(t+0.06);
+    }
+    function kick(start){
+      if (!chip.ctx) return; const osc = chip.ctx.createOscillator(); const g = chip.ctx.createGain();
+      osc.type = 'sine'; osc.frequency.value = 180; osc.connect(g); g.connect(chip.gain);
+      const t = chip.ctx.currentTime + start; g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.14, t+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+0.12);
+      osc.start(t); osc.stop(t+0.14);
+    }
+    function playPattern(){
+      // Waltz-style loop in C major @90 BPM (3/4). Approx 2.0s per bar (~0.667s per beat)
+      const bpm = 90; const beat = 60/bpm; // ~0.6667s
+      const lead='sawtooth', bass='triangle';
+      // Oom‑pa‑pa: beat 1 = bass (root), beats 2&3 = light chords/arp
+      // Progression over 1 bar: C (I) for whole bar to keep it simple and cute
+      const root = 130.81; // C3
+      const chord = [261.63, 329.63, 392.00]; // C4 E4 G4
+      // Beat 1: strong bass
+      note(bass, root, 0*beat, 0.28, 0.16);
+      kick(0*beat);
+      // Beat 2: light chord stab + hat
+      chord.forEach((f,i)=> note(lead, f, 1*beat, 0.14, 0.07-(i*0.01)));
+      hat(1*beat);
+      // Beat 3: arpeggio up + hat
+      note(lead, chord[0], 2*beat+0.00, 0.12, 0.07);
+      note(lead, chord[1], 2*beat+0.10, 0.12, 0.06);
+      note(lead, chord[2], 2*beat+0.20, 0.12, 0.06);
+      hat(2*beat);
+    }
+    function startChipBgm(){
+      if (chip.isPlaying) return; ensureCtx(); if (!chip.ctx) return;
+      chip.isPlaying = true; chip.isMuted = false; musicOn = true; musicBtn.textContent = '🔊 BGM';
+      // schedule immediately, then every bar (4 beats @ 120 BPM = 2000ms)
+      playPattern();
+      chip.loopId = setInterval(()=>{ playPattern(); }, 2000);
+    }
+    function stopChipBgm(){ if (chip.loopId){ clearInterval(chip.loopId); chip.loopId=null; } chip.isPlaying=false; }
+    function toggleChipBgm(){ ensureCtx(); if (!chip.ctx) return; chip.isMuted = !chip.isMuted; if (chip.gain){ chip.gain.gain.value = chip.isMuted ? 0 : chip.vol; } musicOn = !chip.isMuted; musicBtn.textContent = chip.isMuted ? '🔈 BGM' : '🔊 BGM'; if (!chip.isMuted && !chip.isPlaying){ startChipBgm(); } }
+
+    function endRun(){
+      state.done = true;
+      clearInterval(timerId); timerId = null;
+      // Best score update
+      if (state.score > bestScore) { bestScore = state.score; localStorage.setItem('kimbap_best_score', String(bestScore)); }
+      goTitle.textContent = "Time's Up!";
+      goMsg.innerHTML = `
+        <div style="margin-bottom:8px; color:#2a3655; font-weight:700;">Your Score</div>
+        <div class="final-score">${state.score}</div>
+        <span class="best-note">Best: <b>${bestScore}</b></span>
+      `;
       gameOver.classList.remove('hidden');
     }
 
+    function startTimer(){
+      const start = performance.now();
+      let last = start;
+      timeLeft = TIMER_MS;
+      updateHUD();
+      timerId = setInterval(()=>{
+        const now = performance.now();
+        const dt = now - last; last = now; timeLeft -= dt;
+        if (timeLeft <= 0) { timeLeft = 0; updateHUD(); endRun(); }
+        else { updateHUD(); }
+      }, 200);
+    }
+
     function doCut(){
-      if (!state.started){ setMessage('Press Start Game first.'); return; }
-      if (state.done) return;
+      if (!state.started){ setMessage('Press Start first.'); return; }
+      if (state.done || cutting) return;
+      if (!chip.isPlaying){ startChipBgm(); }
+      cutting = true;
       animateKnife();
       setTimeout(()=>{
-        const chance = currentBurstChance();
-        const r = Math.random();
-        if (r < chance) {
-          burstEffect(); failBeep();
-          if (!state.extraLifeUsed) {
-            state.extraLifeUsed = true;
-            setMessage('It burst! One more chance — careful!');
-          } else {
-            state.done = true; state.burst = true;
-            setMessage('It burst! You lose. Tap Retry.', 'lose');
-            showGameOver(false);
-          }
-        } else {
-          state.cuts++;
-          renderDots(); updateHUD(); passBeep();
-          placePiece(state.cuts - 1);
-          if (state.cuts >= MAX_CUTS) {
-            state.done = true; winJingle();
-            setMessage('Perfect! 10 clean cuts. You win!', 'win');
-            showGameOver(true);
-          } else {
-            setMessage('Clean cut! Keep going...');
-          }
-        }
+        state.score++;
+        renderScore(); updateHUD(); passBeep();
+        placePiece(state.score - 1);
+        setMessage('Clean cut!');
+        cutting = false;
       }, 120);
     }
 
     function resetGame(){
-      state.cuts = 0; state.done = false; state.burst = false; state.started = false; state.extraLifeUsed = false;
+      state.score = 0; state.done = false; state.burst = false; state.started = false; state.extraLifeUsed = false; cutting = false;
+      if (timerId) { clearInterval(timerId); timerId = null; }
       crack.classList.remove('show');
       document.getElementById('flash')?.classList.remove('show');
-      renderDots(); updateHUD();
-      setMessage('Tap Start Game to begin!');
+      renderScore(); timeLeft = TIMER_MS; updateHUD();
+      setMessage('Tap Start to begin and slice fast!');
       if (piecesEl) piecesEl.innerHTML = '';
       gameOver.classList.add('hidden');
+      // Show start overlay and re-enable Start button
+      document.getElementById('startOverlay').classList.remove('hidden');
+      startBtn.disabled = false;
     }
 
     function explode(){
@@ -437,13 +534,14 @@
     cutBtn.addEventListener('click', doCut);
     resetBtn.addEventListener('click', ()=>{ resetGame(); });
     startBtn.addEventListener('click', () => {
-      state.started = true;
+      state.started = true; state.done = false;
       document.getElementById('startOverlay').classList.add('hidden');
       startBtn.disabled = true;
       startMusic();
-      setMessage('Music on. Tap Cut to slice!');
+      renderScore(); timeLeft = TIMER_MS; updateHUD(); startTimer();
+      setMessage('Go! Cut clean pieces to score.');
     });
-    retryBtn.addEventListener('click', () => { resetGame(); state.started = true; document.getElementById('startOverlay').classList.add('hidden'); setMessage('Tap Cut to slice!'); });
+    retryBtn.addEventListener('click', () => { resetGame(); state.started = true; document.getElementById('startOverlay').classList.add('hidden'); renderScore(); startTimer(); setMessage('Go!'); });
     musicBtn.addEventListener('click', toggleMusic);
     document.querySelector('.board').addEventListener('click', (e)=>{ if ((e.target.closest('#resetBtn'))) return; doCut(); });
     window.addEventListener('keydown', (e)=>{
@@ -452,7 +550,7 @@
     });
 
     // Initialize
-    renderDots(); updateHUD();
+    renderScore(); timeLeft = TIMER_MS; updateHUD();
   })();
   </script>
 </body>

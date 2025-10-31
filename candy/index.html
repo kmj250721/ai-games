@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Willy Wonka’s Candy Catch</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --bg2:#0d1420; --teal:#19c6d2; --violet:#a06bff; --orange:#ff8e2b; --gray:#93a4b8; --danger:#ff4466; --lime:#89ff6b;
+    }
+    html,body{height:100%}
+    body{margin:0; display:grid; place-items:center; background:radial-gradient(1200px 700px at 50% 20%, #142033 0%, #0e1726 45%, #0b0f14 100%); color:#eaf6ff; font-family:ui-monospace, Menlo, Monaco, Consolas, "Cascadia Mono", monospace}
+
+    .cabinet{ position:relative; width:min(96vw, 980px); aspect-ratio:16/9; max-height:92vh; border-radius:20px; padding:20px; background:linear-gradient(180deg,#060a12,#0a101a); box-shadow:0 30px 80px rgba(0,0,0,.65), inset 0 0 0 2px #0d1624, inset 0 0 50px rgba(0,0,0,.75) }
+    .bezel{ position:absolute; inset:10px; border-radius:16px; background:linear-gradient(180deg,#08121d,#0a1828); overflow:hidden; box-shadow: inset 0 0 0 3px #0b1523, inset 0 0 80px rgba(0,0,0,.8) }
+    .screen{ position:absolute; inset:18px; border-radius:12px; background:#070b12; overflow:hidden }
+
+    canvas{ width:100%; height:100%; image-rendering: pixelated; image-rendering: crisp-edges }
+    .scan::after{ content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:soft-light; opacity:.6; background:
+      repeating-linear-gradient(to bottom, rgba(255,255,255,.05) 0, rgba(255,255,255,.05) 1px, rgba(0,0,0,.05) 3px, rgba(0,0,0,.05) 4px) }
+    .glow{ position:absolute; inset:-6px; pointer-events:none; border-radius:14px; box-shadow:0 0 30px rgba(25,198,210,.25), inset 0 0 20px rgba(25,198,210,.15) }
+
+    .hud{ position:absolute; inset:18px; display:flex; flex-direction:column; pointer-events:none }
+    .row{ display:flex; justify-content:space-between; align-items:center; gap:12px; font-size:14px }
+    .badge{ background:#0a1320; border:1px solid #14243a; border-radius:6px; padding:6px 10px; color:#cfe6ff; text-shadow:0 1px 0 #000 }
+    .accent{ border-color:#1a3b4f; color:#c9fbff; box-shadow:0 0 0 2px rgba(25,198,210,.12) inset }
+    .warning{ border-color:#3a2a11; color:#ffe2b3 }
+    .controls{ position:absolute; left:18px; right:18px; bottom:10px; text-align:center; font-size:12px; opacity:.95; color:#000000; text-shadow:none }
+
+    .center{ margin:auto; text-align:center }
+    .title{ font-weight:900; letter-spacing:.08em; color:#bfe7ff; text-shadow:0 2px 0 #06121d, 0 0 10px rgba(25,198,210,.35) }
+    .sub{ opacity:.95; font-size:12px; color:#000000 }
+    .btn{ pointer-events:auto; display:inline-block; margin-top:10px; padding:10px 14px; border-radius:8px; border:1px solid #0d2a3d; background:linear-gradient(180deg,#0c1826,#0a1420); color:#cfeaff; text-decoration:none; cursor:pointer }
+    .btn:hover{ border-color:#197a86; box-shadow:0 0 0 2px rgba(25,198,210,.22) inset }
+
+    .footer{ position:absolute; bottom:8px; left:0; right:0; text-align:center; opacity:.45; font-size:11px; letter-spacing:.08em }
+  </style>
+</head>
+<body>
+  <div class="cabinet">
+    <div class="bezel">
+      <div class="screen scan">
+        <canvas id="game" width="480" height="270"></canvas>
+        <div class="glow"></div>
+      </div>
+      <div class="hud">
+        <div class="row">
+          <div class="badge accent" id="hudScore">SCORE 000000</div>
+          <div class="badge" id="hudCombo">COMBO x1.0</div>
+          <div class="badge warning" id="hudTime">60.0s</div>
+          <div class="badge" id="hudLives">LIVES ♥♥♥</div>
+        </div>
+        <div class="center" id="centerMsg">
+          <div class="title">INSERT COIN</div>
+          <div class="sub">Move: Arrows • Aim: Mouse • Throw: Space • Pause: P • Mute: M</div>
+          <button class="btn" id="startBtn">PRESS SPACE OR CLICK</button>
+        </div>
+        <div class="controls" id="controlsGuide">Move: Mouse/Arrows • Shoot: Space • Click candies to pop • Pause: P • Mute: M</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">Willy Wonka’s Candy Catch • 16:9 Pixel Canvas • No assets</div>
+
+  <script>
+  ;(() => {
+    'use strict'
+
+    // SETTINGS
+    const CANVAS = document.getElementById('game')
+    const CTX = CANVAS.getContext('2d')
+    const W = CANVAS.width // 480
+    const H = CANVAS.height // 270
+
+    const UI = {
+      score: document.getElementById('hudScore'),
+      combo: document.getElementById('hudCombo'),
+      time: document.getElementById('hudTime'),
+      lives: document.getElementById('hudLives'),
+      center: document.getElementById('centerMsg'),
+      startBtn: document.getElementById('startBtn'),
+    }
+
+    const SETTINGS = {
+      playerSpeed: 120,
+      fireCooldown: 0.22,
+      shotSpeed: 300,
+      comboWindow: 2.0,
+      comboStep: 0.5, // x1.0 -> x1.5 -> x2.0 ...
+      maxCombo: 5.0,
+      timeLimit: 60,
+      livesStart: 3,
+      spawnBase: 0.9,
+      spawnMin: 0.35,
+      gearCount: 5,
+      followLerp: 10, // mouse-follow smoothing factor (higher = snappier)
+    }
+
+    // STATE
+    const state = {
+      running: false,
+      paused: false,
+      muted: false,
+      timeLeft: SETTINGS.timeLimit,
+      score: 0,
+      best: Number(localStorage.getItem('wonka_candy_best') || 0),
+      combo: 1.0,
+      comboTimer: 0,
+      streak: 0,
+      lives: SETTINGS.livesStart,
+      shots: [],
+      enemies: [],
+      enemyBullets: [],
+      particles: [],
+      buffs: [],
+      spawnTimer: 0.5,
+      tick: 0,
+      mouse: {x: W/2, y: H/2},
+    }
+
+    // INPUT
+    const Keys = {left:false,right:false,up:false,down:false,space:false,p:false,m:false}
+    window.addEventListener('keydown', (e)=>{
+      if(e.code==='ArrowLeft') Keys.left=true
+      if(e.code==='ArrowRight') Keys.right=true
+      if(e.code==='ArrowUp') Keys.up=true
+      if(e.code==='ArrowDown') Keys.down=true
+      if(e.code==='Space'){ Keys.space=true; e.preventDefault() }
+      if(e.code==='KeyP') Keys.p=true
+      if(e.code==='KeyM') Keys.m=true
+      if(!state.running && e.code==='Space') start()
+    })
+    window.addEventListener('keyup', (e)=>{
+      if(e.code==='ArrowLeft') Keys.left=false
+      if(e.code==='ArrowRight') Keys.right=false
+      if(e.code==='ArrowUp') Keys.up=false
+      if(e.code==='ArrowDown') Keys.down=false
+      if(e.code==='Space') Keys.space=false
+      if(e.code==='KeyP') Keys.p=false
+      if(e.code==='KeyM') Keys.m=false
+    })
+    UI.startBtn.addEventListener('click', ()=> start())
+
+    CANVAS.addEventListener('mousemove', (e)=>{
+      const r = CANVAS.getBoundingClientRect()
+      const x = (e.clientX - r.left) * (W / r.width)
+      const y = (e.clientY - r.top) * (H / r.height)
+      // clamp to canvas bounds
+      state.mouse.x = Math.max(0, Math.min(W, x))
+      state.mouse.y = Math.max(0, Math.min(H, y))
+    })
+    CANVAS.addEventListener('mousedown', (e)=>{
+      if(e.button!==0) return
+      const r = CANVAS.getBoundingClientRect()
+      const x = (e.clientX - r.left) * (W / r.width)
+      const y = (e.clientY - r.top) * (H / r.height)
+      state.mouse.x = Math.max(0, Math.min(W, x))
+      state.mouse.y = Math.max(0, Math.min(H, y))
+      if(state.running && !state.paused){
+        if(popClick(state.mouse.x, state.mouse.y)){
+          // successful click gives feedback via onHit/killEffects
+        } else {
+          // optional: slight combo decay on empty click (omitted for fairness)
+        }
+      }
+      e.preventDefault()
+    })
+
+    // AUDIO
+    let AC; function beep(freq=440, dur=0.06, type='square', vol=0.03){
+      if(state.muted) return
+      try{
+        AC = AC || new (window.AudioContext||window.webkitAudioContext)()
+        const o = AC.createOscillator(); const g = AC.createGain()
+        o.type = type; o.frequency.value = freq; o.connect(g); g.connect(AC.destination)
+        const now = AC.currentTime
+        g.gain.value = vol
+        o.start()
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+        o.stop(now + dur + 0.01)
+      }catch(err){}
+    }
+
+    // small tone scheduler for multi-note sfx
+    function tone(freq, dur=0.08, type='square', vol=0.05, delay=0){
+      if(state.muted) return
+      try{
+        AC = AC || new (window.AudioContext||window.webkitAudioContext)()
+        const o = AC.createOscillator(); const g = AC.createGain()
+        o.type = type; o.frequency.value = freq; o.connect(g); g.connect(AC.destination)
+        const now = AC.currentTime + (delay||0)
+        g.gain.value = vol
+        o.start(now)
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+        o.stop(now + dur + 0.02)
+      }catch(err){}
+    }
+
+    function sfxChocolate(){ // warm, chocolatey descend
+      tone(260,0.10,'triangle',0.06,0.00)
+      tone(200,0.10,'triangle',0.06,0.08)
+    }
+    function sfxCookie(){ // crunchy clicks
+      tone(1200,0.03,'square',0.04,0.00)
+      tone(900,0.04,'square',0.04,0.04)
+    }
+    function sfxCandy(){ // bright pop up
+      tone(880,0.06,'square',0.05,0.00)
+      tone(1175,0.05,'square',0.05,0.06)
+    }
+    function sfxPerfect(){ // celebratory arpeggio
+      tone(784,0.08,'triangle',0.06,0.00)
+      tone(988,0.08,'triangle',0.06,0.08)
+      tone(1175,0.10,'triangle',0.06,0.16)
+    }
+
+    // Background music (lively, cheerful, bright)
+    const music = { interval:null, gain:null, tempo:132, step:0, running:false }
+    function ensureAC(){ AC = AC || new (window.AudioContext||window.webkitAudioContext)(); return AC }
+    function startMusic(){
+      if(music.running) return
+      const ac = ensureAC(); if(ac.state==='suspended'){ ac.resume() }
+      music.gain = music.gain || ac.createGain()
+      music.gain.connect(ac.destination)
+      music.gain.gain.value = state.muted ? 0 : 0.2
+      music.running = true
+      const spb = 60 / music.tempo // seconds per beat
+      const period = spb / 4 // 16th notes
+      music.step = 0
+      music.interval = setInterval(musicStep, period * 1000)
+    }
+    function stopMusic(){ if(music.interval){ clearInterval(music.interval); music.interval=null } music.running=false }
+    function musicNote(freq, dur, type='square', vol=0.3){
+      if(!AC || !music.gain) return
+      const ac = AC
+      const o = ac.createOscillator(); const g = ac.createGain()
+      o.type = type; o.frequency.value = freq; o.connect(g); g.connect(music.gain)
+      const now = ac.currentTime
+      g.gain.value = vol
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur)
+      o.start(now)
+      o.stop(now + dur + 0.02)
+    }
+    function musicStep(){
+      if(!AC || !music.running) return
+      const s = music.step % 32
+      // friendly major palette
+      const bassRoot = (s < 16) ? 262 : 294 // C4 then D4 movement
+      const fifth = (s < 16) ? 392 : 440   // G4 then A4
+
+      // warm bass on 1 and 3 (quarters)
+      if(s % 8 === 0){ musicNote(bassRoot/2, 0.22, 'triangle', 0.18) }
+      if(s % 8 === 4){ musicNote(fifth/2,    0.22, 'triangle', 0.18) }
+
+      // gentle chord pad at the start of each half-bar
+      if(s % 8 === 1){
+        // triad (root, third, fifth) as soft sines
+        musicNote(bassRoot, 0.35, 'sine', 0.06)
+        musicNote(bassRoot*1.25, 0.35, 'sine', 0.05)  // approx major third
+        musicNote(bassRoot*1.5,  0.35, 'sine', 0.05)  // fifth
+      }
+
+      // cheerful sine arpeggio on off-beats
+      const arp = [523,587,659,698,659,587,659,698] // C5-D5-E5-F5...
+      if(s % 2 === 1){
+        const f = arp[s % arp.length]
+        musicNote(f, 0.12, 'sine', 0.12)
+      }
+
+      // soft bell sparkle near end of each bar
+      if(s % 8 === 6){ musicNote(880, 0.16, 'triangle', 0.10) }
+
+      music.step++
+    }
+
+    function adjustMusicVolume(){ if(music.gain){ music.gain.gain.value = state.muted ? 0 : 0.2 } }
+
+    // ENTITIES
+    const player = { x: W*0.5, y: H-28, w:10, h:12, angle: 0, cooldown:0, rapidUntil:0, bigUntil:0 }
+
+    function spawn(type){
+      if(type==='bar'){
+        const w=14,h=8
+        const x = 10 + Math.random()*(W-20-w)
+        const y = -h - Math.random()*20
+        const vy = 70 + Math.random()*30
+        const vx = (Math.random()*2-1)*15
+        state.enemies.push({ kind:'bar', x, y, w, h, vx, vy, t:0, hp:1, pts:60, sweet:1 })
+      } else if(type==='cookie'){
+        const w=12,h=12
+        const x = 10 + Math.random()*(W-20-w)
+        const y = -h - Math.random()*20
+        const vy = 60 + Math.random()*25
+        const vx = (Math.random()*2-1)*10
+        state.enemies.push({ kind:'cookie', x, y, w, h, vx, vy, t:0, hp:2, pts:80, sweet:1 })
+      } else if(type==='candy'){
+        const w=10,h=8
+        const x = 10 + Math.random()*(W-20-w)
+        const y = -h - Math.random()*20
+        const vy = 80 + Math.random()*35
+        const vx = (Math.random()*2-1)*20
+        state.enemies.push({ kind:'candy', x, y, w, h, vx, vy, t:0, hp:1, pts:50, sweet:1 })
+      } else if(type==='gumball'){
+        const w=8,h=8
+        const x = 10 + Math.random()*(W-20-w)
+        const y = -h - Math.random()*20
+        const vy = 85 + Math.random()*40
+        const vx = (Math.random()*2-1)*15
+        const colorIndex = (Math.random()*4)|0
+        state.enemies.push({ kind:'gumball', x, y, w, h, vx, vy, t:0, hp:1, pts:40, sweet:1, colorIndex })
+      }
+    }
+
+    function randomSpawn(){
+      const r = Math.random()
+      if(r < 0.4) spawn('bar')
+      else if(r < 0.7) spawn('candy')
+      else if(r < 0.9) spawn('cookie')
+      else spawn('gumball')
+    }
+
+    // RENDER HELPERS
+    function R(x,y,w,h,c){ CTX.fillStyle=c; CTX.fillRect(x|0,y|0,w|0,h|0) }
+
+    function drawBackground(t){
+      // warm pastel sky
+      R(0,0,W,H,'#fff3f5')
+      for(let y=0;y<H;y+=8){ const a=0.05+0.02*Math.sin(y*0.04+t*0.8); R(0,y,W,1,`rgba(255,255,255,${a.toFixed(2)})`) }
+      // soft cream clouds
+      for(let i=0;i<3;i++){ const cy=18+i*16; for(let x=0;x<W;x+=12){ const w=10; const off=Math.sin((x+i*18+t*18)*0.025)*2; R(x, cy+off, w, 3, '#fff6db') } }
+
+      // sugar grass ground (mint tint) and sugar path foreground
+      R(0, H-26, W, 26, '#e8ffe9'); R(0, H-26, W, 2, '#d1ffd3')
+      const pathY = H-18
+      for(let x=0;x<W;x+=8){ const off = Math.sin((x+t*30)*0.05)*2; R(x, pathY+off, 6, 6, '#ffe6b3') }
+
+      // village of candy cottages (3-4 houses) with varying scales
+      const houses = [
+        {x: 70,   baseY: H-26, scale: 0.85},
+        {x: W/2-80, baseY: H-26, scale: 1.05},
+        {x: W-150, baseY: H-26, scale: 0.9},
+      ]
+      const warmWalls = ['#f6d6a8','#f1c991','#f3ddb8']
+      for(let h=0; h<houses.length; h++){
+        const s = houses[h].scale
+        const cw = (120*s)|0, ch = (64*s)|0
+        const bx = (houses[h].x)|0
+        const by = (houses[h].baseY - ch)|0
+        const cx = bx + (cw/2)|0
+        const wall = warmWalls[h%warmWalls.length]
+        // cookie walls with chips
+        R(bx, by, cw, ch, wall); R(bx+2, by+2, cw-4, ch-4, '#eacfa7')
+        for(let yy=by+6; yy<by+ch-6; yy+=12){ for(let xx=bx+6; xx<bx+cw-6; xx+=14){ R(xx, yy, 2, 2, '#7a4a2a') } }
+
+        // icing roof with frosting icicles (pointing upward)
+        const ry = by - (18*s)|0
+        const N = 10
+        for(let i=0;i<N;i++){
+          const base = (cw*0.12)
+          const w = (base + i*((cw - base)/(N-1)))|0
+          const rx = cx - (w/2)|0
+          R(rx, ry + (i*2)|0, w, 3, '#ffe4f0')
+          if(i%2===0){ for(let s2=rx+4; s2<rx+w-4; s2+=12){ const cols=['#ffb3c9','#fff0b3','#ffdede','#ffeab3']; R(s2, ry + i*2 + 1, 2, 1, cols[(s2/12)%cols.length|0]) } }
+        }
+        // frosting icicles under roof edge
+        for(let k=0;k<cw; k+=8){ const len = 3 + ((k/8)%3); R(bx+k, by-1, 2, len, '#fff4f6') }
+
+        // candy cane trims
+        for(let side=0; side<2; side++){
+          const x = side===0? bx-6 : bx+cw
+          for(let y2=by; y2<by+ch; y2+=6){ const c = ((y2/6)%2===0)? '#ffb3c9':'#ffffff'; R(x, y2, 4, 4, c) }
+        }
+
+        // windows
+        const winY = by + (18*s)|0
+        for(let side=0; side<2; side++){
+          const wx = bx + (20*s)|0 + side*(cw - (40*s)|0)
+          R(wx, winY, (16*s)|0, (16*s)|0, '#fff3c9'); R(wx+2, winY+2, (12*s)|0, (12*s)|0, '#ffeaa1')
+          R(wx + ((8*s)|0), winY+2, 1, (12*s)|0, '#ffd86e'); R(wx+2, winY + ((8*s)|0), (12*s)|0, 1, '#ffd86e')
+        }
+
+        // chocolate door with shimmering highlight
+        const dw = (16*s)|0, dh = (20*s)|0
+        const dx = cx - (dw/2)|0, dy = by + ch - dh
+        R(dx, dy, dw, dh, '#7a4a2a'); R(dx+2, dy+2, dw-4, dh-4, '#9a5c34')
+        // shimmer sparkle (two moving highlights)
+        const phase = t*2 + h
+        const shineY = dy + ((Math.sin(phase)*0.5+0.5)*(dh-6))|0
+        const shineA = 0.25 + 0.25*(Math.sin(phase*2)*0.5+0.5)
+        CTX.fillStyle = `rgba(255,255,255,${shineA.toFixed(2)})`
+        CTX.fillRect(dx+dw-5, shineY, 3, 2)
+        CTX.fillRect(dx+3, dy + ((dh-shineY+dy)%dh), 2, 2)
+        // knob
+        R(dx+dw-4, dy + (dh/2)|0, 2, 2, '#fff0b3')
+      }
+
+      // gumdrops along the lawn
+      const drops = ['#ffb3c9','#fff0b3','#ffdede','#ffeab3']
+      for(let x=6; x<W; x+=18){ const c = drops[(x/18)%drops.length|0]; const bob = Math.sin(t*3 + x*0.08)*0.4; R(x, H-10 + bob, 8, 6, c); R(x, H-12 + bob, 8, 2, '#ffffff') }
+    }
+
+    function drawGear(cx, cy, r, rot){
+      const teeth = 8
+      for(let i=0;i<teeth;i++){
+        const a = rot + i*(Math.PI*2/teeth)
+        const x = cx + Math.cos(a)*r
+        const y = cy + Math.sin(a)*r
+        R(x-2,y-2,4,4,'#1a2638'); R(x-1,y-1,2,2,'#2a3b56')
+      }
+      R(cx-3,cy-3,6,6,'#142133'); R(cx-2,cy-2,4,4,'#20324a')
+    }
+
+    // Aim clamping: restrict to forward arc (upwards half-plane)
+    function clampedAimAngle(px, py, mx, my){
+      const dx = mx - px
+      const dy = my - py
+      let a = Math.atan2(dy, dx)
+      if(a > 0){ // behind (downwards), clamp to horizontal boundary
+        a = (dx >= 0) ? 0 : Math.PI
+      }
+      return a
+    }
+
+    function drawPlayer(){ /* rendering disabled */ }
+
+    function drawShot(s){
+      // pastel candy projectile
+      R(s.x-1, s.y-4, 2, 8, '#ffd86e')
+      R(s.x-2, s.y-2, 4, 4, '#ff90c8')
+    }
+
+    function drawEnemy(e){
+      if(e.kind==='bar'){
+        // chocolate bar: base + lighter grid
+        R(e.x,e.y,e.w,e.h,'#6b3a1f'); R(e.x+1,e.y+1,e.w-2,e.h-2,'#8a4b27')
+        for(let gx=2; gx<e.w; gx+=4){ R(e.x+gx, e.y+2, 1, e.h-4, '#b3784d') }
+        R(e.x+2, e.y+Math.floor(e.h/2), e.w-4, 1, '#b3784d')
+      } else if(e.kind==='cookie'){
+        // cookie: tan circle-ish with chips
+        const cx = (e.x|0), cy=(e.y|0)
+        R(cx,cy, e.w,e.h, '#caa46a'); R(cx+1,cy+1, e.w-2, e.h-2, '#d9b782')
+        // chips
+        R(cx+3,cy+3,2,2,'#5b3b1f'); R(cx+7,cy+2,2,2,'#5b3b1f'); R(cx+5,cy+7,2,2,'#5b3b1f')
+      } else if(e.kind==='candy'){
+        // wrapped candy: body + side wrappers flipping by tick
+        const flip = (state.tick>>3)%2===0
+        const body = '#ff90c8'
+        const wrap = '#ffd86e'
+        R(e.x+2, e.y+2, e.w-4, e.h-4, body)
+        if(flip){ R(e.x, e.y+3, 2,2, wrap); R(e.x+e.w-2, e.y+3, 2,2, wrap) }
+        else { R(e.x, e.y+2, 2,4, wrap); R(e.x+e.w-2, e.y+2, 2,4, wrap) }
+        R(e.x+3, e.y+3, e.w-6, e.h-6, '#ffa8d8')
+      } else if(e.kind==='gumball'){
+        // gumball: small colorful sphere with rotating sheen
+        const colors = ['#ff90c8','#79e8c1','#ffd86e','#9cd3ff']
+        const col = colors[e.colorIndex||0]
+        R(e.x+2, e.y+2, e.w-4, e.h-4, col)
+        const off = ((state.tick>>2)%e.w)
+        R(e.x+1+off% (e.w-2), e.y+2, 1, e.h-4, '#ffffff')
+      }
+      if(e.hitFlash>0) R(e.x,e.y,e.w,e.h,'rgba(255,255,255,0.6)')
+    }
+
+    function drawEnemyBullet(b){ /* no enemy bullets in click mode */ }
+
+    function particle(x,y,c){ state.particles.push({x,y, vx:(Math.random()*2-1)*50, vy:(Math.random()*2-1)*50, life:0.4, c}) }
+
+    function drawParticles(dt){
+      for(let i=state.particles.length-1;i>=0;i--){
+        const p = state.particles[i]
+        p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 60*dt; p.life -= dt
+        R(p.x, p.y, 2, 2, p.c || '#ffbd6b')
+        if(p.life<=0) state.particles.splice(i,1)
+      }
+    }
+
+    function fireShot(){
+      const speed = SETTINGS.shotSpeed
+      state.shots.push({ x: player.x|0, y: (player.y-10)|0, vy: -speed })
+      beep(300,0.05,'square',0.05)
+    }
+
+    // CLICK POP: hit test enemies and apply scoring
+    function popClick(x,y){
+      for(let i=state.enemies.length-1;i>=0;i--){
+        const e=state.enemies[i]
+        if(aabbPoint(x,y,e)){
+          state.enemies.splice(i,1)
+          onHit(e, {click:true})
+          killEffects(e)
+          return true
+        }
+      }
+      return false
+    }
+
+    // COLLISION helpers
+    function aabbPoint(px,py, e){ return px>e.x && px<e.x+e.w && py>e.y && py<e.y+e.h }
+
+    // UPDATE
+    function update(dt){
+      if(!state.running || state.paused) return
+
+      state.tick++
+      state.timeLeft -= dt; if(state.timeLeft<=0) { state.timeLeft=0; return gameOver() }
+
+      // smooth horizontal movement: mouse + arrow keys influence
+      const laneY = H-28
+      const clampX = (v)=>Math.max(10, Math.min(W-10, v))
+      let desiredX = clampX(state.mouse.x)
+      const keyDir = (Keys.left? -1:0) + (Keys.right? 1:0)
+      if(keyDir!==0){ desiredX = clampX(player.x + keyDir * SETTINGS.playerSpeed * 0.15) }
+      const t = Math.min(1, SETTINGS.followLerp * dt)
+      player.x = player.x + (desiredX - player.x) * t
+      player.y = laneY
+
+      // no Spacebar shooting in click mode
+      // fire projectile on space with cooldown
+      if(Keys.space && player.cooldown<=0){
+        fireShot();
+        player.cooldown = SETTINGS.fireCooldown
+      }
+      if(Keys.p){ Keys.p=false; togglePause() }
+      if(Keys.m){ Keys.m=false; state.muted=!state.muted; adjustMusicVolume() }
+
+      if(player.cooldown>0) player.cooldown -= dt
+      if(player.rapidUntil>0) player.rapidUntil -= dt
+
+// combo decay
+if(state.combo>1.0){ state.comboTimer -= dt; if(state.comboTimer<=0){ state.combo=1.0; state.streak=0 } }
+
+// update projectiles and handle collisions
+for(let i=state.shots.length-1;i>=0;i--){
+const s = state.shots[i]
+s.y += s.vy * dt
+if(s.y < -10){ state.shots.splice(i,1); continue }
+// collision with enemies
+for(let j=state.enemies.length-1;j>=0;j--){
+const e = state.enemies[j]
+if(aabbPoint(s.x, s.y, {x:e.x, y:e.y, w:e.w, h:e.h})){
+state.enemies.splice(j,1)
+state.shots.splice(i,1)
+onHit(e, {click:false})
+killEffects(e)
+break
+}
+}
+}
+
+// spawn
+state.spawnTimer -= dt
+if(state.spawnTimer<=0){ randomSpawn(); const diff = 1 - (state.timeLeft/SETTINGS.timeLimit); const rate = SETTINGS.spawnBase - diff*0.4; state.spawnTimer = Math.max(SETTINGS.spawnMin, rate) }
+
+// enemies fall from top; miss if they reach bottom
+for(let i=state.enemies.length-1;i>=0;i--){
+const e = state.enemies[i]
+e.t += dt
+if(e.kind==='cookie'){
+e.y += (e.vy||60)*dt + Math.sin(e.t*3)*6*dt
+e.x += (e.vx||0)*dt
+} else if(e.kind==='bar' || e.kind==='candy' || e.kind==='gumball'){
+e.y += (e.vy||70)*dt
+e.x += (e.vx||0)*dt
+}
+if(e.hitFlash>0) e.hitFlash -= dt
+if(e.y > H-18){ state.enemies.splice(i,1); onMiss() }
+}
+
+      // no enemy bullets in click mode
+
+      // no projectile collisions in click mode
+
+      // buffs fall
+      for(let i=state.buffs.length-1;i>=0;i--){ const b=state.buffs[i]; b.y += 40*dt; if(aabbPoint(player.x,player.y,{x:b.x-3,y:b.y-3,w:6,h:6})) {applyBuff(b); state.buffs.splice(i,1)} else if(b.y>H-18){ state.buffs.splice(i,1) } }
+
+      updateHUD()
+    }
+
+    function onHit(e, src){
+      // score and combo
+      const base = e.pts || 0
+      let add = Math.round(base * state.combo)
+      if(src && src.click){ add += 20 }
+      // per-target sfx
+      if(e.kind==='bar') sfxChocolate()
+      else if(e.kind==='cookie') sfxCookie()
+      else if(e.kind==='candy' || e.kind==='gumball') sfxCandy()
+      state.score += add
+      state.combo = Math.min(SETTINGS.maxCombo, +(state.combo + SETTINGS.comboStep).toFixed(1))
+      state.comboTimer = SETTINGS.comboWindow
+      state.streak++
+      // 3-streak celebration
+      if(state.streak>0 && state.streak%3===0){ sfxPerfect() }
+      if(state.streak>0 && state.streak%10===0){
+        state.score += 500
+        popup(e.x, e.y, 'PERFECT +500', '#a0ff6b')
+        for(let k=0;k<12;k++) particle(e.x+e.w/2, e.y+e.h/2, '#a0ff6b')
+      }
+    }
+
+    function onMiss(){
+      if(!state.running || state.paused) return
+      state.combo = 1.0; state.comboTimer = 0; state.streak = 0
+      state.score = Math.max(0, state.score - 10)
+    }
+
+    function freezeAoE(cx,cy,r){
+      for(const e of state.enemies){ const dx=e.x+e.w/2-cx, dy=e.y+e.h/2-cy; if(Math.hypot(dx,dy)<=r){ e.frozen = 2.5; e.hitFlash=0.2 } }
+    }
+
+    function killEffects(e){
+      // pastel candy sparkle colors
+      const colors = ['#ff90c8','#ffe36e','#a0ffd6','#9cd3ff']
+      for(let k=0;k<12;k++) particle(e.x+e.w/2, e.y+e.h/2, colors[(Math.random()*colors.length)|0])
+    }
+
+    function dropBuff(x,y){
+      const types = ['time','score','rapid','big']
+      const t = types[(Math.random()*types.length)|0]
+      state.buffs.push({t, x, y})
+      popup(x,y-8, t==='time'?'+5s': t==='score'?'+100': t==='rapid'?'RAPID':'BIG', '#ffcf4d')
+    }
+
+    function applyBuff(b){
+      beep(260,0.08,'sine',0.05)
+      if(b.t==='time') state.timeLeft = Math.min(SETTINGS.timeLimit, state.timeLeft + 5)
+      else if(b.t==='score') state.score += 100
+      else if(b.t==='rapid') player.rapidUntil = 5
+      else if(b.t==='big') player.bigUntil = 5
+    }
+
+    function loseLife(){
+      beep(140,0.12,'sawtooth',0.05)
+      state.lives--; onMiss()
+      if(state.lives<=0) gameOver()
+    }
+
+    // UI/HUD
+    function updateHUD(){
+      UI.score.textContent = `SCORE ${String(state.score).padStart(6,'0')}`
+      UI.combo.textContent = `COMBO x${state.combo.toFixed(1)}`
+      UI.time.textContent = `${state.timeLeft.toFixed(1)}s`
+      UI.lives.textContent = `LIVES ${'♥'.repeat(Math.max(0,state.lives))}`
+    }
+
+    function popup(x,y,text,color){
+      state.particles.push({x,y, text, color, life:1.2, vy:-18})
+    }
+
+    function drawPopups(dt){
+      for(let i=state.particles.length-1;i>=0;i--){
+        const p = state.particles[i]
+        if(!p.text) continue
+        p.y += (p.vy||-18)*dt; p.life -= dt
+        CTX.fillStyle = p.color||'#ffffff'
+        CTX.fillRect(p.x-8, p.y-10, 1,1) // small pixel start
+        CTX.fillStyle = p.color||'#ffffff'
+        CTX.font = '8px monospace'; CTX.textAlign='center'
+        CTX.fillText(p.text, p.x|0, p.y|0)
+        if(p.life<=0){ state.particles.splice(i,1) }
+      }
+    }
+
+    // RENDER
+    function render(dt){
+      drawBackground(state.tick*0.016)
+      // enemies
+      state.enemies.forEach(drawEnemy)
+      // enemy bullets
+      state.enemyBullets.forEach(drawEnemyBullet)
+      // shots
+      state.shots.forEach(drawShot)
+      // player
+      drawPlayer()
+      // particles
+      drawParticles(dt); drawPopups(dt)
+
+      // crosshair removed for click-based gameplay
+      ;
+    }
+
+    // LOOP
+    let last = 0
+    function loop(ts){
+      const t = ts/1000; const dt = Math.min(0.033, last? (t-last): 0); last=t
+      if(state.running && !state.paused) update(dt)
+      render(dt)
+      requestAnimationFrame(loop)
+    }
+
+    // SCREENS
+    function reset(){
+      state.running=false; state.paused=false; state.timeLeft=SETTINGS.timeLimit; state.score=0; state.combo=1.0; state.comboTimer=0; state.streak=0; state.lives=SETTINGS.livesStart
+      state.shots.length=0; state.enemies.length=0; state.enemyBullets.length=0; state.particles.length=0; state.buffs.length=0; state.spawnTimer=0.5
+      UI.center.style.display='block';
+      UI.center.innerHTML = `<div class="title">WILLY WONKA’S CANDY CATCH</div><div class="sub">Press Start, then click falling sweets! • 60s • Pause: P • Mute: M</div><button class="btn" id="startBtn">PRESS START</button>`
+      const startBtn = UI.center.querySelector('#startBtn'); if(startBtn){ startBtn.addEventListener('click', start) }
+      updateHUD()
+      stopMusic();
+    }
+
+    function start(){
+      if(state.running) return
+      state.running=true; UI.center.style.display='none'; beep(220,0.08,'square',0.05); startMusic();
+    }
+
+    function togglePause(){
+      if(!state.running) return
+      state.paused = !state.paused
+      if(state.paused){ UI.center.style.display='block'; UI.center.innerHTML = `<div class="title">PAUSED</div><div class="sub">Press P to resume</div>`; stopMusic() }
+      else { UI.center.style.display='none'; startMusic(); adjustMusicVolume() }
+    }
+
+    function gameOver(){
+      state.running=false
+      if(state.score>state.best){ state.best=state.score; localStorage.setItem('wonka_candy_best', String(state.best)) }
+      UI.center.style.display='block'
+      UI.center.innerHTML = `<div class="title">GAME OVER</div>
+        <div class="sub">Final: ${state.score} • Best: ${state.best}</div>
+        <button class="btn" id="retryBtn">RETRY</button>`
+      document.getElementById('retryBtn').addEventListener('click', reset)
+      beep(110,0.2,'sawtooth',0.05)
+      stopMusic()
+    }
+
+    window.addEventListener('blur', ()=>{ state.muted=true; adjustMusicVolume(); if(state.running && !state.paused){ togglePause() } })
+    window.addEventListener('focus', ()=>{ state.muted=false; adjustMusicVolume() })
+
+    // BOOT
+    reset()
+    requestAnimationFrame(loop)
+  })()
+  </script>
+</body>
+</html>
