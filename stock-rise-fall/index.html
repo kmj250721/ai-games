@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Will My Stock Rise or Fall?</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 50%, #16213e 100%);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .game-container {
+      width: 90vw;
+      max-width: 1600px;
+      aspect-ratio: 16/9;
+      background: #0f1419;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    /* Start Screen */
+    .start-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .start-screen.hidden {
+      display: none;
+    }
+
+    .game-title {
+      font-size: 4rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      background: linear-gradient(45deg, #00ff88, #00ccff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .help-icon {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: transform 0.3s;
+      z-index: 10;
+    }
+
+    .help-icon:hover {
+      transform: scale(1.2) rotate(15deg);
+    }
+
+    .help-dialog {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      background: rgba(15, 20, 25, 0.95);
+      border: 2px solid rgba(0, 255, 136, 0.5);
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 300px;
+      z-index: 10;
+      display: none;
+      backdrop-filter: blur(10px);
+    }
+
+    .help-dialog.show {
+      display: block;
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .help-dialog h3 {
+      color: #00ff88;
+      margin-bottom: 10px;
+    }
+
+    .start-btn, .retry-btn {
+      background: linear-gradient(135deg, #00ff88, #00ccff);
+      border: none;
+      padding: 20px 60px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #0a0e27;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+      margin-top: 40px;
+    }
+
+    .start-btn:hover, .retry-btn:hover {
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: 0 15px 40px rgba(0, 255, 136, 0.5);
+    }
+
+    .start-btn:active, .retry-btn:active {
+      transform: translateY(-2px) scale(1.02);
+    }
+
+    /* Game Screen */
+    .game-screen {
+      display: none;
+      flex-direction: column;
+      height: 100%;
+      padding: 20px;
+    }
+
+    .game-screen.active {
+      display: flex;
+    }
+
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 20px 40px;
+      background: rgba(26, 31, 46, 0.8);
+      border-radius: 15px;
+      border: 2px solid rgba(0, 255, 136, 0.3);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+
+    .score-display {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #00ff88;
+      text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: rgba(0, 255, 136, 0.1);
+      border-radius: 10px;
+      border: 2px solid rgba(0, 255, 136, 0.3);
+    }
+
+    .timer-display {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #00ccff;
+      text-shadow: 0 0 20px rgba(0, 204, 255, 0.8);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: rgba(0, 204, 255, 0.1);
+      border-radius: 10px;
+      border: 2px solid rgba(0, 204, 255, 0.3);
+    }
+
+    .round-timer {
+      animation: blink 1s infinite;
+    }
+
+    .round-timer-display .round-timer {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .stock-chart {
+      flex: 1;
+      background: #1a1f2e;
+      border: 2px solid rgba(0, 255, 136, 0.3);
+      border-radius: 15px;
+      margin: 20px;
+      position: relative;
+      overflow: hidden;
+      padding: 20px;
+    }
+
+    .chart-canvas {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    .chart-svg {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .chart-line {
+      fill: none;
+      transition: all 0.3s ease;
+    }
+
+    .chart-line.rise {
+      stroke: #00ff88;
+      stroke-width: 3;
+    }
+
+    .chart-line.fall {
+      stroke: #ff6b6b;
+      stroke-width: 3;
+    }
+
+    .chart-point {
+      r: 4;
+      transition: all 0.3s ease;
+    }
+
+    .chart-point.rise {
+      fill: #00ff88;
+    }
+
+    .chart-point.fall {
+      fill: #ff6b6b;
+    }
+
+    .chart-grid {
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 1;
+    }
+
+    .chart-label {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.2rem;
+      color: #888;
+    }
+
+    .chart-current-price {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #00ff88;
+    }
+
+    .game-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding: 20px;
+      background: rgba(26, 31, 46, 0.5);
+      border-radius: 15px;
+      margin: 0 20px 20px 20px;
+    }
+
+    .left-column {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .right-column {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .choice-buttons {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .keyboard-hint {
+      font-size: 1rem;
+      color: #888;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .keyboard-hint .key {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      font-weight: bold;
+      color: #00ff88;
+      margin: 0 3px;
+    }
+
+    .toggle-switch-container {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      height: 80px;
+      background: rgba(26, 31, 46, 0.8);
+      border-radius: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .toggle-switch-container:hover {
+      border-color: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .toggle-switch-container:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .toggle-switch-background {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+    }
+
+    .toggle-option {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      transition: all 0.3s;
+      z-index: 1;
+    }
+
+    .toggle-option.rise {
+      color: #00ff88;
+    }
+
+    .toggle-option.fall {
+      color: #ff6b6b;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(135deg, #00ff88, #00cc88);
+      border-radius: 40px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 2;
+      box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+      left: 0;
+    }
+
+    .toggle-slider.fall {
+      left: 50%;
+      background: linear-gradient(135deg, #ff6b6b, #ff4444);
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    }
+
+    .toggle-slider.selected {
+      animation: sliderPulse 1s ease-in-out infinite;
+    }
+
+    @keyframes sliderPulse {
+      0%, 100% { 
+        box-shadow: 0 4px 15px rgba(0, 255, 136, 0.4);
+      }
+      50% { 
+        box-shadow: 0 4px 25px rgba(0, 255, 136, 0.8);
+      }
+    }
+
+    .toggle-slider.fall.selected {
+      animation: sliderPulseFall 1s ease-in-out infinite;
+    }
+
+    @keyframes sliderPulseFall {
+      0%, 100% { 
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+      }
+      50% { 
+        box-shadow: 0 4px 25px rgba(255, 107, 107, 0.8);
+      }
+    }
+
+    .toggle-slider-text {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #0a0e27;
+      z-index: 3;
+    }
+
+    .investment-section {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: flex-start;
+    }
+
+    .investment-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .round-timer-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(255, 107, 107, 0.1);
+      border-radius: 10px;
+      border: 2px solid rgba(255, 107, 107, 0.3);
+      text-align: center;
+    }
+
+    .round-timer-label {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .round-timer-display {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #ff6b6b;
+      text-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+    }
+
+    .submit-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .submit-hint {
+      font-size: 1rem;
+      color: #888;
+      text-align: center;
+    }
+
+    .submit-hint .key {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      font-weight: bold;
+      color: #ffd700;
+      margin: 0 3px;
+    }
+
+    .investment-label {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .investment-input {
+      padding: 15px;
+      font-size: 1.2rem;
+      border: 2px solid rgba(0, 255, 136, 0.5);
+      border-radius: 10px;
+      background: #1a1f2e;
+      color: #fff;
+      width: 150px;
+      text-align: center;
+    }
+
+    .investment-input:focus {
+      outline: none;
+      border-color: #00ff88;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    }
+
+    .leverage-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .leverage-btn {
+      padding: 12px 24px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border: 2px solid rgba(0, 255, 136, 0.5);
+      border-radius: 10px;
+      background: #1a1f2e;
+      color: #00ff88;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .leverage-btn:hover {
+      background: rgba(0, 255, 136, 0.1);
+      border-color: #00ff88;
+    }
+
+    .leverage-btn.active {
+      background: linear-gradient(135deg, #00ff88, #00cc88);
+      color: #0a0e27;
+      border-color: #00ff88;
+      box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+    }
+
+    .submit-btn {
+      padding: 20px 40px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      background: linear-gradient(135deg, #ffd700, #ffaa00);
+      border: none;
+      border-radius: 15px;
+      color: #0a0e27;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(255, 215, 0, 0.5);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .result-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 3rem;
+      font-weight: bold;
+      z-index: 100;
+      pointer-events: none;
+      animation: resultAnimation 1s ease-out forwards;
+    }
+
+    @keyframes resultAnimation {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      50% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.2);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    .result-message.win {
+      color: #00ff88;
+      text-shadow: 0 0 30px rgba(0, 255, 136, 0.8);
+    }
+
+    .result-message.lose {
+      color: #ff6b6b;
+      text-shadow: 0 0 30px rgba(255, 107, 107, 0.8);
+    }
+
+    /* Game Over Screen */
+    .game-over-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .game-over-screen.active {
+      display: flex;
+    }
+
+    .game-over-title {
+      font-size: 4rem;
+      font-weight: bold;
+      margin-bottom: 30px;
+      color: #ff6b6b;
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-20px); }
+      75% { transform: translateX(20px); }
+    }
+
+    .bankrupt-message {
+      font-size: 2.5rem;
+      color: #ff6b6b;
+      margin-bottom: 30px;
+      animation: pulse 1s ease-in-out infinite;
+    }
+
+    .final-score {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #00ff88;
+    }
+
+    .best-score {
+      font-size: 1.5rem;
+      color: #ffd700;
+      margin-bottom: 40px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .combo-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 4rem;
+      font-weight: bold;
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0;
+      text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+    }
+
+    .combo-display.active {
+      opacity: 1;
+      animation: comboAnimation 1s ease-out forwards;
+    }
+
+    @keyframes comboAnimation {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      20% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.3);
+      }
+      40% {
+        transform: translate(-50%, -50%) scale(1.1);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1) translateY(-50px);
+      }
+    }
+
+    .combo-counter {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #ffd700;
+      text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+      padding: 10px 20px;
+      background: rgba(255, 215, 0, 0.1);
+      border-radius: 20px;
+      border: 2px solid rgba(255, 215, 0, 0.3);
+      z-index: 101;
+      display: none;
+    }
+
+    .combo-counter.show {
+      display: block;
+      animation: comboCounterPulse 0.5s ease-out;
+    }
+
+    @keyframes comboCounterPulse {
+      0%, 100% {
+        transform: translateX(-50%) scale(1);
+      }
+      50% {
+        transform: translateX(-50%) scale(1.2);
+      }
+    }
+
+    @media (max-width: 768px) {
+      .game-title {
+        font-size: 2.5rem;
+      }
+
+      .chart-price {
+        font-size: 2rem;
+      }
+
+      .choice-buttons {
+        flex-direction: column;
+      }
+
+      .investment-section {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <!-- Start Screen -->
+    <div class="start-screen" id="startScreen">
+      <div class="help-icon" id="helpIcon">❔</div>
+      <div class="help-dialog" id="helpDialog">
+        <h3>How to Play</h3>
+        <p>Predict whether your stock will rise or fall. Bet wisely before time runs out!</p>
+        <p>• You have 5 seconds per round to make a choice</p>
+        <p>• Set your investment (minimum 10) and leverage (x2, x3, x4)</p>
+        <p>• If you're right, you gain points. If wrong, you lose points</p>
+        <p>• Game ends if your score reaches 0 or time runs out</p>
+      </div>
+      <h1 class="game-title">Will My Stock Rise or Fall?</h1>
+      <button class="start-btn" id="startBtn">Start Game</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div class="game-screen" id="gameScreen">
+      <div class="game-header">
+        <div class="score-display">Score: <span id="score">100</span></div>
+        <div class="timer-display">Time Left: <span id="globalTimer">60</span>s</div>
+        <div class="combo-counter" id="comboCounter">COMBO x<span id="comboCount">0</span></div>
+      </div>
+      <div class="stock-chart" id="stockChart">
+        <div class="chart-current-price" id="chartCurrentPrice">$100.00</div>
+        <svg class="chart-svg" id="chartSvg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="chart-label">Stock Price History</div>
+      </div>
+      <div class="game-controls">
+        <!-- Left Column: Rise/Fall and Investment -->
+        <div class="left-column">
+          <div class="choice-buttons">
+            <div class="keyboard-hint">
+              Press <span class="key">R</span> for Rise or <span class="key">F</span> for Fall
+            </div>
+            <div class="toggle-switch-container" id="toggleSwitch">
+              <div class="toggle-switch-background">
+                <div class="toggle-option rise">Rise 📈</div>
+                <div class="toggle-option fall">Fall 📉</div>
+              </div>
+              <div class="toggle-slider" id="toggleSlider">
+                <div class="toggle-slider-text" id="toggleSliderText">Rise 📈</div>
+              </div>
+            </div>
+          </div>
+          <div class="investment-section">
+            <span class="investment-label">Investment:</span>
+            <div class="investment-row">
+              <input type="number" class="investment-input" id="investmentInput" value="10" min="10" step="10">
+              <div class="leverage-buttons">
+                <button class="leverage-btn" data-leverage="2">x2</button>
+                <button class="leverage-btn active" data-leverage="3">x3</button>
+                <button class="leverage-btn" data-leverage="4">x4</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Right Column: Round Timer and Submit -->
+        <div class="right-column">
+            <div class="submit-section">
+              <button class="submit-btn" id="submitBtn">Submit</button>
+              <div class="submit-hint">
+                Press <span class="key">Enter</span> to submit
+              </div>
+            </div>
+          <div class="round-timer-section">
+            <div class="round-timer-label">Round Time</div>
+            <div class="round-timer-display">
+              <span class="round-timer" id="roundTimer">5</span>s
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div class="game-over-screen" id="gameOverScreen">
+      <h1 class="game-over-title">Game Over</h1>
+      <div id="bankruptMessage" class="bankrupt-message hidden">💥 You went bankrupt!</div>
+      <div class="final-score">Final Score: <span id="finalScore">0</span></div>
+      <div class="best-score">Best Score: <span id="bestScore">0</span></div>
+      <button class="retry-btn" id="retryBtn">Retry</button>
+    </div>
+  </div>
+
+  <script>
+    // Game State
+    let gameState = {
+      score: 100,
+      globalTimeLeft: 60,
+      roundTimeLeft: 5,
+      isGameActive: false,
+      currentChoice: null,
+      persistentChoice: null, // Persist toggle choice across rounds
+      investment: 10,
+      leverage: 3,
+      roundTimeout: null,
+      globalInterval: null,
+      roundInterval: null,
+      canSubmit: true,
+      chartAnimation: null,
+      priceHistory: [100],
+      resultHistory: [],
+      combo: 0 // Combo counter
+    };
+
+    // DOM Elements
+    const startScreen = document.getElementById('startScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const gameOverScreen = document.getElementById('gameOverScreen');
+    const helpIcon = document.getElementById('helpIcon');
+    const helpDialog = document.getElementById('helpDialog');
+    const startBtn = document.getElementById('startBtn');
+    const toggleSwitch = document.getElementById('toggleSwitch');
+    const toggleSlider = document.getElementById('toggleSlider');
+    const toggleSliderText = document.getElementById('toggleSliderText');
+    const investmentInput = document.getElementById('investmentInput');
+    const leverageButtons = document.querySelectorAll('.leverage-btn');
+    const submitBtn = document.getElementById('submitBtn');
+    const scoreDisplay = document.getElementById('score');
+    const globalTimerDisplay = document.getElementById('globalTimer');
+    const roundTimerDisplay = document.getElementById('roundTimer');
+    const chartSvg = document.getElementById('chartSvg');
+    const chartCurrentPrice = document.getElementById('chartCurrentPrice');
+    const retryBtn = document.getElementById('retryBtn');
+    const finalScoreDisplay = document.getElementById('finalScore');
+    const bestScoreDisplay = document.getElementById('bestScore');
+    const bankruptMessage = document.getElementById('bankruptMessage');
+    const comboCounter = document.getElementById('comboCounter');
+    const comboCount = document.getElementById('comboCount');
+
+    // Load best score
+    function loadBestScore() {
+      const bestScore = localStorage.getItem('bestScore') || 0;
+      bestScoreDisplay.textContent = bestScore;
+      return parseInt(bestScore);
+    }
+
+    // Save best score
+    function saveBestScore(score) {
+      const currentBest = loadBestScore();
+      if (score > currentBest) {
+        localStorage.setItem('bestScore', score.toString());
+        bestScoreDisplay.textContent = score;
+      }
+    }
+
+    // Help dialog toggle
+    helpIcon.addEventListener('click', () => {
+      helpDialog.classList.toggle('show');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!helpIcon.contains(e.target) && !helpDialog.contains(e.target)) {
+        helpDialog.classList.remove('show');
+      }
+    });
+
+    // Start game
+    startBtn.addEventListener('click', startGame);
+
+    function startGame() {
+      gameState.score = 100;
+      gameState.globalTimeLeft = 60;
+      gameState.roundTimeLeft = 5;
+      gameState.isGameActive = true;
+      gameState.currentChoice = null;
+      gameState.persistentChoice = 'rise'; // Reset to Rise state on new game
+      gameState.canSubmit = true;
+      gameState.priceHistory = [100];
+      gameState.resultHistory = [];
+      gameState.combo = 0; // Reset combo on new game
+
+      startScreen.classList.add('hidden');
+      gameScreen.classList.add('active');
+      gameOverScreen.classList.remove('active');
+
+      updateScoreDisplay();
+      drawChart();
+      startRoundTimer();
+      startGlobalTimer();
+      resetRound();
+    }
+
+    // Toggle switch - click to toggle between Rise and Fall
+    toggleSwitch.addEventListener('click', () => {
+      if (!gameState.canSubmit) return;
+      
+      // Toggle between Rise and Fall
+      if (gameState.currentChoice === null || gameState.currentChoice === 'fall') {
+        toggleToChoice('rise');
+      } else {
+        toggleToChoice('fall');
+      }
+    });
+
+    function toggleToChoice(choice) {
+      if (!gameState.canSubmit) return;
+      gameState.currentChoice = choice;
+      gameState.persistentChoice = choice; // Save choice for next round
+      updateToggleSwitch(choice);
+    }
+
+    function updateToggleSwitch(choice) {
+      if (choice === 'rise') {
+        toggleSlider.classList.remove('fall');
+        toggleSlider.classList.add('selected');
+        toggleSliderText.textContent = 'Rise 📈';
+      } else if (choice === 'fall') {
+        toggleSlider.classList.add('fall');
+        toggleSlider.classList.add('selected');
+        toggleSliderText.textContent = 'Fall 📉';
+      } else {
+        toggleSlider.classList.remove('fall', 'selected');
+        toggleSliderText.textContent = '';
+      }
+    }
+
+    // Leverage buttons
+    leverageButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        leverageButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        gameState.leverage = parseInt(btn.dataset.leverage);
+      });
+    });
+
+    // Investment input
+    investmentInput.addEventListener('input', (e) => {
+      let value = parseInt(e.target.value) || 0;
+      if (value < 10) value = 10;
+      if (value % 10 !== 0) value = Math.floor(value / 10) * 10;
+      e.target.value = value;
+      gameState.investment = value;
+    });
+
+    // Submit button
+    submitBtn.addEventListener('click', submitRound);
+
+    function submitRound() {
+      if (!gameState.canSubmit || gameState.currentChoice === null) return;
+
+      clearRoundTimer();
+      gameState.canSubmit = false;
+
+      // Random result
+      const result = Math.random() < 0.5 ? 'rise' : 'fall';
+      const isCorrect = gameState.currentChoice === result;
+
+      // Calculate points
+      const pointsChange = gameState.investment * gameState.leverage;
+      
+      if (isCorrect) {
+        // Increase combo
+        gameState.combo++;
+        gameState.score += pointsChange;
+        
+        // Show combo message if combo >= 2
+        if (gameState.combo >= 2) {
+          showCombo(gameState.combo);
+        }
+        
+        showResult(`You won +${pointsChange}!`, 'win');
+      } else {
+        // Reset combo on wrong answer
+        if (gameState.combo > 0) {
+          hideCombo();
+        }
+        gameState.combo = 0;
+        gameState.score -= pointsChange;
+        // Ensure score doesn't go below 0
+        if (gameState.score < 0) {
+          gameState.score = 0;
+        }
+        showResult(`You lost -${pointsChange}!`, 'lose');
+      }
+      
+      updateComboDisplay();
+
+      // Update price history and chart
+      const lastPrice = gameState.priceHistory[gameState.priceHistory.length - 1];
+      const priceChange = result === 'rise' ? (lastPrice * 0.05) : -(lastPrice * 0.05);
+      const newPrice = Math.max(50, Math.min(200, lastPrice + priceChange));
+      gameState.priceHistory.push(newPrice);
+      gameState.resultHistory.push(result);
+      
+      updateScoreDisplay();
+      drawChart();
+
+      // Check game over conditions - immediate check for bankruptcy
+      if (gameState.score <= 0) {
+        setTimeout(() => {
+          endGame(true);
+        }, 1500);
+        return;
+      }
+
+      // Check other game over conditions
+      setTimeout(() => {
+        if (gameState.globalTimeLeft <= 0) {
+          endGame(false);
+          return;
+        }
+
+        resetRound();
+      }, 1500);
+    }
+
+    function showResult(message, type) {
+      const resultMsg = document.createElement('div');
+      resultMsg.className = `result-message ${type}`;
+      resultMsg.textContent = message;
+      gameScreen.appendChild(resultMsg);
+
+      setTimeout(() => {
+        resultMsg.remove();
+      }, 1000);
+    }
+
+    function showCombo(comboLevel) {
+      const comboMsg = document.createElement('div');
+      comboMsg.className = 'combo-display active';
+      
+      // Different messages for different combo levels
+      let message = '';
+      let color = '#ffd700';
+      if (comboLevel === 2) {
+        message = 'COMBO x2! 🔥';
+      } else if (comboLevel === 3) {
+        message = 'COMBO x3! 🔥🔥';
+      } else if (comboLevel === 4) {
+        message = 'COMBO x4! 🔥🔥🔥';
+      } else if (comboLevel === 5) {
+        message = 'COMBO x5! 🔥🔥🔥🔥';
+      } else if (comboLevel >= 10) {
+        message = `INSANE COMBO x${comboLevel}! 🚀🚀🚀`;
+        color = '#ff00ff';
+      } else {
+        message = `COMBO x${comboLevel}! 🔥`.repeat(Math.min(Math.floor(comboLevel / 2), 3));
+      }
+      
+      comboMsg.textContent = message;
+      comboMsg.style.color = color;
+      gameScreen.appendChild(comboMsg);
+
+      setTimeout(() => {
+        comboMsg.remove();
+      }, 1000);
+    }
+
+    function updateComboDisplay() {
+      if (gameState.combo >= 2) {
+        comboCount.textContent = gameState.combo;
+        comboCounter.classList.add('show');
+      } else {
+        comboCounter.classList.remove('show');
+      }
+    }
+
+    function hideCombo() {
+      comboCounter.classList.remove('show');
+    }
+
+    // Round timer (5 seconds)
+    function startRoundTimer() {
+      if (gameState.roundInterval) clearInterval(gameState.roundInterval);
+      
+      // Ensure roundTimeLeft is set correctly
+      if (gameState.roundTimeLeft <= 0) {
+        gameState.roundTimeLeft = 5;
+      }
+      roundTimerDisplay.textContent = gameState.roundTimeLeft;
+      
+      gameState.roundInterval = setInterval(() => {
+        gameState.roundTimeLeft--;
+        roundTimerDisplay.textContent = gameState.roundTimeLeft;
+
+        if (gameState.roundTimeLeft <= 0) {
+          handleRoundTimeout();
+        }
+      }, 1000);
+    }
+
+    function clearRoundTimer() {
+      if (gameState.roundInterval) {
+        clearInterval(gameState.roundInterval);
+        gameState.roundInterval = null;
+      }
+    }
+
+    function handleRoundTimeout() {
+      // If already submitted, do nothing (submitRound already handled it)
+      if (!gameState.canSubmit) return;
+
+      // Prevent multiple calls
+      clearRoundTimer();
+      gameState.canSubmit = false;
+      gameState.roundTimeLeft = 0;
+      
+      // Round time reached 0 - apply penalty and move to next round
+      // Reset combo on timeout
+      if (gameState.combo > 0) {
+        hideCombo();
+      }
+      gameState.combo = 0;
+      
+      gameState.score -= 10;
+      // Ensure score doesn't go below 0
+      if (gameState.score < 0) {
+        gameState.score = 0;
+      }
+      showResult('Time out! -10 points', 'lose');
+      updateScoreDisplay();
+      updateComboDisplay();
+
+      // Update chart with random result for timeout
+      const result = Math.random() < 0.5 ? 'rise' : 'fall';
+      const lastPrice = gameState.priceHistory[gameState.priceHistory.length - 1];
+      const priceChange = result === 'rise' ? (lastPrice * 0.05) : -(lastPrice * 0.05);
+      const newPrice = Math.max(50, Math.min(200, lastPrice + priceChange));
+      gameState.priceHistory.push(newPrice);
+      gameState.resultHistory.push(result);
+      drawChart();
+
+      // Check game over conditions - immediate check for bankruptcy
+      if (gameState.score <= 0) {
+        setTimeout(() => {
+          endGame(true);
+        }, 1500);
+        return;
+      }
+
+      // Move to next round
+      setTimeout(() => {
+        if (gameState.globalTimeLeft <= 0) {
+          endGame(false);
+          return;
+        }
+
+        resetRound();
+      }, 1500);
+    }
+
+    // Global timer (60 seconds)
+    function startGlobalTimer() {
+      if (gameState.globalInterval) clearInterval(gameState.globalInterval);
+      
+      gameState.globalInterval = setInterval(() => {
+        gameState.globalTimeLeft--;
+        globalTimerDisplay.textContent = gameState.globalTimeLeft;
+
+        if (gameState.globalTimeLeft <= 0) {
+          clearInterval(gameState.globalInterval);
+          endGame(false);
+        }
+      }, 1000);
+    }
+
+    function resetRound() {
+      // Clear the interval before starting a new one
+      if (gameState.roundInterval) {
+        clearInterval(gameState.roundInterval);
+        gameState.roundInterval = null;
+      }
+      
+      // Reset round state
+      gameState.roundTimeLeft = 5;
+      gameState.currentChoice = null;
+      gameState.canSubmit = true;
+      
+      // Update display
+      roundTimerDisplay.textContent = gameState.roundTimeLeft;
+
+      // Apply persistent choice if exists
+      if (gameState.persistentChoice) {
+        gameState.currentChoice = gameState.persistentChoice;
+        updateToggleSwitch(gameState.persistentChoice);
+      } else {
+        updateToggleSwitch(null);
+      }
+
+      // Ensure submit button is enabled
+      submitBtn.disabled = false;
+      toggleSwitch.disabled = false;
+      
+      // Start new round timer
+      startRoundTimer();
+    }
+
+    function updateScoreDisplay() {
+      scoreDisplay.textContent = gameState.score;
+      scoreDisplay.style.animation = 'none';
+      setTimeout(() => {
+        scoreDisplay.style.animation = 'pulse 0.3s ease-in-out';
+      }, 10);
+    }
+
+    // Draw stock chart with history
+    function drawChart() {
+      if (!chartSvg) return;
+      
+      // Clear previous content
+      chartSvg.innerHTML = '';
+      
+      const width = 800;
+      const height = 400;
+      const padding = 40;
+      const chartWidth = width - padding * 2;
+      const chartHeight = height - padding * 2;
+      
+      // Find min and max prices for scaling
+      const prices = gameState.priceHistory;
+      const minPrice = Math.min(...prices);
+      const maxPrice = Math.max(...prices);
+      const priceRange = maxPrice - minPrice || 1;
+      
+      // Draw grid lines
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (chartHeight / 5) * i;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('class', 'chart-grid');
+        line.setAttribute('x1', padding);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', width - padding);
+        line.setAttribute('y2', y);
+        chartSvg.appendChild(line);
+        
+        // Price labels
+        const priceLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        priceLabel.setAttribute('x', padding - 10);
+        priceLabel.setAttribute('y', y + 5);
+        priceLabel.setAttribute('fill', '#888');
+        priceLabel.setAttribute('font-size', '12');
+        priceLabel.setAttribute('text-anchor', 'end');
+        const labelPrice = maxPrice - (priceRange / 5) * i;
+        priceLabel.textContent = `$${labelPrice.toFixed(2)}`;
+        chartSvg.appendChild(priceLabel);
+      }
+      
+      // Draw price lines segment by segment (like stock chart)
+      if (prices.length > 1) {
+        // Draw lines for each segment based on result
+        for (let i = 1; i < prices.length; i++) {
+          const prevPrice = prices[i - 1];
+          const currPrice = prices[i];
+          
+          // Calculate positions
+          const prevX = padding + (chartWidth / (prices.length - 1)) * (i - 1);
+          const currX = padding + (chartWidth / (prices.length - 1)) * i;
+          const prevNormalized = (prevPrice - minPrice) / priceRange;
+          const currNormalized = (currPrice - minPrice) / priceRange;
+          const prevY = padding + chartHeight - (prevNormalized * chartHeight);
+          const currY = padding + chartHeight - (currNormalized * chartHeight);
+          
+          // Determine line color based on result
+          const resultIndex = i - 1;
+          const result = resultIndex < gameState.resultHistory.length 
+            ? gameState.resultHistory[resultIndex] 
+            : 'rise';
+          
+          // Draw line segment
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', prevX);
+          line.setAttribute('y1', prevY);
+          line.setAttribute('x2', currX);
+          line.setAttribute('y2', currY);
+          line.setAttribute('class', `chart-line ${result}`);
+          chartSvg.appendChild(line);
+        }
+        
+        // Draw points
+        prices.forEach((price, index) => {
+          const x = padding + (chartWidth / (prices.length - 1)) * index;
+          const normalizedPrice = (price - minPrice) / priceRange;
+          const y = padding + chartHeight - (normalizedPrice * chartHeight);
+          
+          // Determine point color: first point is always rise, others use resultHistory
+          let pointColor = 'rise';
+          if (index > 0 && index <= gameState.resultHistory.length) {
+            pointColor = gameState.resultHistory[index - 1];
+          }
+          
+          const point = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          point.setAttribute('cx', x);
+          point.setAttribute('cy', y);
+          point.setAttribute('class', `chart-point ${pointColor}`);
+          point.setAttribute('r', index === prices.length - 1 ? 6 : 4);
+          
+          // Add glow effect to current point
+          if (index === prices.length - 1) {
+            const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            glow.setAttribute('cx', x);
+            glow.setAttribute('cy', y);
+            glow.setAttribute('r', 10);
+            glow.setAttribute('fill', pointColor === 'fall' ? 'rgba(255, 107, 107, 0.3)' : 'rgba(0, 255, 136, 0.3)');
+            glow.setAttribute('class', 'chart-point-glow');
+            chartSvg.appendChild(glow);
+          }
+          
+          chartSvg.appendChild(point);
+        });
+      }
+      
+      // Update current price display
+      const currentPrice = prices[prices.length - 1];
+      chartCurrentPrice.textContent = `$${currentPrice.toFixed(2)}`;
+      chartCurrentPrice.style.color = prices.length > 1 && currentPrice >= prices[prices.length - 2] ? '#00ff88' : '#ff6b6b';
+    }
+
+    function endGame(isBankrupt) {
+      gameState.isGameActive = false;
+      clearRoundTimer();
+      if (gameState.globalInterval) {
+        clearInterval(gameState.globalInterval);
+        gameState.globalInterval = null;
+      }
+      if (gameState.chartAnimation) {
+        cancelAnimationFrame(gameState.chartAnimation);
+        gameState.chartAnimation = null;
+      }
+
+      gameScreen.classList.remove('active');
+      gameOverScreen.classList.add('active');
+
+      if (isBankrupt) {
+        bankruptMessage.classList.remove('hidden');
+      } else {
+        bankruptMessage.classList.add('hidden');
+      }
+
+      finalScoreDisplay.textContent = gameState.score;
+      saveBestScore(gameState.score);
+      bestScoreDisplay.textContent = loadBestScore();
+    }
+
+    // Retry button
+    retryBtn.addEventListener('click', startGame);
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      // Only handle keys when game is active and on game screen
+      if (!gameState.isGameActive || !gameScreen.classList.contains('active')) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+      
+      // R key for Rise
+      if (key === 'r' && gameState.canSubmit) {
+        e.preventDefault();
+        toggleToChoice('rise');
+      }
+      
+      // F key for Fall
+      if (key === 'f' && gameState.canSubmit) {
+        e.preventDefault();
+        toggleToChoice('fall');
+      }
+      
+      // Enter key for Submit
+      if (key === 'enter' && gameState.canSubmit) {
+        e.preventDefault();
+        if (gameState.currentChoice !== null) {
+          submitRound();
+        }
+      }
+    });
+
+    // Initialize
+    loadBestScore();
+  </script>
+</body>
+</html>
