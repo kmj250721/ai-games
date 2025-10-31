@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🦑 Squid Game Drawing</title>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: radial-gradient(circle at center, #0f0f0f 0%, #000 100%);
+    font-family: 'Poppins', sans-serif;
+    color: white;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  #game-container {
+    width: 1200px;
+    height: 700px;
+    background: #111;
+    border-radius: 20px;
+    box-shadow: 0 0 40px rgba(240,77,77,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  h1 {
+    text-align: center;
+    color: #f04d4d;
+    margin: 20px 0;
+    padding-top: 10px;
+  }
+  #question-btn {
+    position: absolute;
+    top: 20px; 
+    right: 20px;
+    width: 35px; 
+    height: 35px;
+    border-radius: 50%;
+    background: #f04d4d;
+    border: none; 
+    color: white;
+    font-size: 20px; 
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #desc {
+    position: absolute;
+    top: 60px; 
+    right: 20px;
+    width: 260px;
+    background: rgba(0,0,0,0.8);
+    padding: 15px; 
+    border-radius: 10px;
+    font-size: 0.85em;
+    display: none;
+  }
+  #start, #result { 
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 100%;
+  }
+  #result { display: none; }
+  #start-btn, #retry-btn {
+    background: #f04d4d; 
+    border: none;
+    color: white; 
+    font-size: 1.5em;
+    padding: 15px 40px; 
+    border-radius: 50px;
+    cursor: pointer; 
+    transition: 0.2s;
+    margin: 0 auto;
+  }
+  #start-btn:hover, #retry-btn:hover { background: #d63e3e; }
+  #game { 
+    display: none; 
+    width: 100%; 
+    height: 100%; 
+    position: relative; 
+  }
+  #canvas {
+    display: block;
+    position: absolute;
+    left: 50%;
+    top: calc(50% - 50px);
+    transform: translate(-50%, -50%);
+    background: #222;
+    border-radius: 10px;
+    touch-action: none;
+    box-shadow: 0 0 20px rgba(240,77,77,0.2);
+  }
+  #scoreboard {
+    position: absolute;
+    left: 30px; 
+    top: 90px;
+    width: 240px;
+    text-align: left;
+    font-size: 0.9em;
+  }
+  #scoreboard h3 {
+    margin: 0 0 10px 0;
+    color: #f04d4d;
+    font-size: 1.1em;
+  }
+  #round-scores { margin-top: 10px; }
+  #round-scores table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+  }
+  #round-scores table th,
+  #round-scores table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #333;
+  }
+  #round-scores table th:first-child,
+  #round-scores table td:first-child {
+    text-align: left;
+    padding-left: 0;
+  }
+  #round-scores table th:not(:first-child),
+  #round-scores table td:not(:first-child) {
+    text-align: center;
+  }
+  #round-scores table th {
+    background: #222;
+    font-weight: bold;
+    color: #f04d4d;
+  }
+  #round-scores table td {
+    color: #ccc;
+  }
+  #best-scores { margin-top: 20px; font-weight: bold; color: #f5f5f5; }
+  #top-right {
+    position: absolute;
+    right: 30px; 
+    top: 180px;
+    text-align: right; 
+    font-size: 1.2em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  #round-timer {
+    font-size: 3.5em;
+    color: #f04d4d;
+    text-align: center;
+    margin-top: 5px;
+    transition: transform 0.3s ease;
+    min-width: 100px;
+    font-weight: bold;
+  }
+  .pulse { animation: pulse 0.7s ease; }
+  @keyframes pulse {
+    0% { transform: scale(1); color: white; }
+    50% { transform: scale(1.7); color: #f04d4d; }
+    100% { transform: scale(1); color: white; }
+  }
+  #round-score-popup {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3em;
+    color: #f04d4d;
+    opacity: 0;
+    transition: opacity 0.6s, transform 0.6s;
+  }
+  .popup-show {
+    opacity: 1; transform: translate(-50%, -50%) scale(1.3);
+  }
+  #result h2 {
+    color: #f04d4d;
+    font-size: 2.5em;
+    margin-bottom: 30px;
+  }
+  #final-scores {
+    font-size: 1.2em;
+    line-height: 1.8em;
+    margin-bottom: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .multiplier {
+    font-size: 2em;
+    color: #f04d4d;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: transform 0.6s ease, opacity 0.6s ease;
+    margin: 15px 0;
+    display: block;
+    min-height: 50px;
+    text-align: center;
+  }
+  .multiplier.explode {
+    opacity: 1;
+    transform: scale(1.8);
+  }
+  .multiplier.final {
+    opacity: 1;
+    transform: scale(1);
+  }
+</style>
+</head>
+<body>
+  <div id="game-container">
+    <h1>🦑 Squid Game Drawing</h1>
+    <button id="question-btn">?</button>
+    <div id="desc">
+      Draw the shown shape as precisely as possible with your mouse or finger.<br><br>
+      Each shape lasts <b>5 seconds</b>. You'll draw <b>15 shapes</b> total.<br>
+      The closer your line matches the shape, the higher your score.<br>
+      Beat your best record before the time runs out!
+    </div>
+
+    <div id="start">
+      <button id="start-btn">Start Game</button>
+    </div>
+
+    <div id="game">
+      <div id="scoreboard">
+        <h3>Scoreboard</h3>
+        <div id="round-scores"></div>
+        <div id="best-scores">
+          🔴 Circle Best: 0<br>
+          🟢 Triangle Best: 0<br>
+          🟦 Square Best: 0
+        </div>
+      </div>
+      <div id="top-right">
+        <div id="round-timer">5</div>
+      </div>
+      <canvas id="canvas" width="500" height="500"></canvas>
+      <div id="round-score-popup"></div>
+    </div>
+
+    <div id="result">
+      <h2>Game Over</h2>
+      <div id="final-scores"></div>
+      <button id="retry-btn">Retry</button>
+    </div>
+  </div>
+
+<script>
+const startBtn = document.getElementById('start-btn');
+const retryBtn = document.getElementById('retry-btn');
+const questionBtn = document.getElementById('question-btn');
+const desc = document.getElementById('desc');
+const gameDiv = document.getElementById('game');
+const startDiv = document.getElementById('start');
+const resultDiv = document.getElementById('result');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const roundTimerEl = document.getElementById('round-timer');
+const roundScores = document.getElementById('round-scores');
+const bestScoresEl = document.getElementById('best-scores');
+const roundPopup = document.getElementById('round-score-popup');
+
+let isDrawing = false;
+let path = [];
+let shapeIndex = 0;
+let shapes = ['circle','triangle','square'];
+let scores = { circle: [], triangle: [], square: [] };
+let bestScores = { circle: 0, triangle: 0, square: 0 };
+let roundTimer = 5;
+let currentShape, center, radius;
+let roundTimerInterval;
+
+questionBtn.onclick = () => {
+  desc.style.display = desc.style.display === 'block' ? 'none' : 'block';
+};
+startBtn.onclick = startGame;
+retryBtn.onclick = () => location.reload();
+
+function startGame(){
+  startDiv.style.display = 'none';
+  resultDiv.style.display = 'none';
+  gameDiv.style.display = 'block';
+  questionBtn.style.display = 'none';
+  shapeIndex = 0;
+  scores = { circle: [], triangle: [], square: [] };
+  bestScores = { circle: 0, triangle: 0, square: 0 };
+  updateRoundScoresTable();
+  startRound();
+}
+
+function startRound(){
+  const shapeType = shapes[Math.floor(shapeIndex / 5)];
+  currentShape = shapeType;
+  roundTimer = 5;
+  drawReferenceShape(shapeType);
+  path = [];
+  updateRoundTimer();
+  clearInterval(roundTimerInterval);
+  roundTimerInterval = setInterval(()=>{
+    roundTimer--;
+    updateRoundTimer();
+    if (roundTimer <= 0){
+      clearInterval(roundTimerInterval);
+      evaluateDrawing();
+      shapeIndex++;
+      if (shapeIndex >= 15) endGame();
+      else startRound();
+    }
+  },1000);
+}
+
+function updateRoundTimer(){
+  roundTimerEl.textContent = roundTimer;
+  roundTimerEl.classList.remove('pulse');
+  void roundTimerEl.offsetWidth;
+  roundTimerEl.classList.add('pulse');
+}
+
+function drawReferenceShape(type){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  const cx = canvas.width/2, cy = canvas.height/2;
+  radius = 150;
+  center = {x: cx, y: cy};
+
+  ctx.beginPath();
+  if (type === 'circle'){
+    ctx.arc(cx, cy, radius, 0, Math.PI*2);
+  } else if (type === 'triangle'){
+    for (let i=0; i<3; i++){
+      const angle = (Math.PI*2/3)*i - Math.PI/2;
+      const x = cx + radius*Math.cos(angle);
+      const y = cy + radius*Math.sin(angle);
+      if (i===0) ctx.moveTo(x,y);
+      else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+  } else {
+    ctx.rect(cx-radius/1.2, cy-radius/1.2, radius*1.8, radius*1.8);
+  }
+  ctx.stroke();
+}
+
+function evaluateDrawing(){
+  let score = 0;
+  if (path.length >= 10) {
+    const centerX = path.reduce((a,p)=>a+p.x,0)/path.length;
+    const centerY = path.reduce((a,p)=>a+p.y,0)/path.length;
+    const avgR = path.reduce((a,p)=>a+Math.hypot(p.x-centerX,p.y-centerY),0)/path.length;
+    const centerDiff = Math.hypot(centerX-center.x, centerY-center.y);
+    const radiusDiff = Math.abs(avgR-radius);
+    score = Math.max(0, Math.round(100 - (centerDiff*0.3 + radiusDiff*0.2)));
+  }
+  scores[currentShape].push(score);
+  showRoundPopup(score);
+  updateRoundScoresTable();
+  if (score > bestScores[currentShape]) {
+    bestScores[currentShape] = score;
+    updateBestScores();
+    launchConfetti();
+  } else {
+    updateBestScores();
+  }
+}
+
+function updateRoundScoresTable(){
+  const maxRounds = Math.max(
+    scores.circle.length,
+    scores.triangle.length,
+    scores.square.length,
+    5
+  );
+  
+  let html = '<table><thead><tr><th>Round</th><th>🔴 Circle</th><th>🟢 Triangle</th><th>🟦 Square</th></tr></thead><tbody>';
+  
+  for (let i = 1; i <= maxRounds; i++) {
+    html += `<tr>`;
+    html += `<td>${i}</td>`;
+    html += `<td>${scores.circle[i-1] !== undefined ? scores.circle[i-1] : '-'}</td>`;
+    html += `<td>${scores.triangle[i-1] !== undefined ? scores.triangle[i-1] : '-'}</td>`;
+    html += `<td>${scores.square[i-1] !== undefined ? scores.square[i-1] : '-'}</td>`;
+    html += `</tr>`;
+  }
+  
+  html += '</tbody></table>';
+  roundScores.innerHTML = html;
+}
+
+function showRoundPopup(score){
+  roundPopup.textContent = `+${score}`;
+  roundPopup.classList.add('popup-show');
+  setTimeout(()=> roundPopup.classList.remove('popup-show'), 800);
+}
+
+function updateBestScores(){
+  bestScoresEl.innerHTML = `
+    🔴 Circle Best: ${bestScores.circle}<br>
+    🟢 Triangle Best: ${bestScores.triangle}<br>
+    🟦 Square Best: ${bestScores.square}
+  `;
+}
+
+function launchConfetti(){
+  const count = 150;
+  const defaults = { origin: { y: 0.7 } };
+  function fire(particleRatio, opts) {
+    confetti(Object.assign({}, defaults, opts, {
+      particleCount: Math.floor(count * particleRatio)
+    }));
+  }
+  fire(0.25, { spread: 26, startVelocity: 55 });
+  fire(0.2, { spread: 60 });
+  fire(0.35, { spread: 100, decay: 0.91, scalar: 1.2 });
+}
+
+function endGame(){
+  clearInterval(roundTimerInterval);
+  gameDiv.style.display = 'none';
+  resultDiv.style.display = 'block';
+  questionBtn.style.display = 'none';
+  const circleBest = Math.max(...scores.circle,0);
+  const triBest = Math.max(...scores.triangle,0);
+  const squareBest = Math.max(...scores.square,0);
+  const total = Math.round(circleBest*1 + triBest*3 + squareBest*4);
+  const fs = document.getElementById('final-scores');
+  fs.innerHTML = '';
+  showMultiplierAnimation('circle', circleBest, 1, fs, 0);
+  setTimeout(()=>showMultiplierAnimation('triangle', triBest, 3, fs, 1), 800);
+  setTimeout(()=>showMultiplierAnimation('square', squareBest, 4, fs, 2), 1600);
+  setTimeout(()=>{
+    fs.innerHTML += `<div style="margin-top:20px;font-weight:bold;font-size:1.4em;">🏆 Total Score: ${total}</div>`;
+  },2400);
+}
+
+function showMultiplierAnimation(shape, baseScore, multiplier, container, index){
+  const el = document.createElement('div');
+  el.className = 'multiplier';
+  el.textContent = `${shape.toUpperCase()} ${baseScore} × ${multiplier}`;
+  container.appendChild(el);
+  setTimeout(()=> el.classList.add('explode'), 100);
+  setTimeout(()=> {
+    el.classList.remove('explode');
+    el.classList.add('final');
+  }, 700);
+}
+
+canvas.addEventListener('pointerdown', e => {
+  isDrawing = true;
+  path = [{x:e.offsetX, y:e.offsetY}];
+});
+canvas.addEventListener('pointermove', e => {
+  if (!isDrawing) return;
+  const x = e.offsetX, y = e.offsetY;
+  path.push({x,y});
+  ctx.strokeStyle = '#f04d4d';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const last = path[path.length-2];
+  if (last) ctx.moveTo(last.x, last.y);
+  ctx.lineTo(x,y);
+  ctx.stroke();
+});
+canvas.addEventListener('pointerup', ()=> isDrawing=false);
+</script>
+</body>
+</html>
+
