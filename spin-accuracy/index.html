@@ -170,6 +170,7 @@
       border-radius: 10px;
       transition: all 0.3s;
       box-shadow: 0 4px 15px rgba(0, 255, 255, 0.3);
+      width: 100%;
     }
 
     button:hover:not(:disabled) {
@@ -295,7 +296,13 @@
     <div id="help-btn">?</div>
 
     <div id="game-area">
-      <button id="start-btn">Start Game</button>
+      <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
+        <div class="arrow-container" style="margin: 20px auto; width: 200px; height: 200px;">
+          <div id="start-ghost-arrow"></div>
+          <div id="start-arrow"></div>
+        </div>
+        <button id="start-btn">Start Game</button>
+      </div>
     </div>
   </div>
 
@@ -323,30 +330,89 @@
     let interval, startAngle, currentAngle;
     let isRunning = false;
     let rotationSpeed = 120; // deg/sec (base speed)
-    let speedMultiplier = 1.0; // Speed multiplier for each round
+    let speedMultiplier = 3.0; // Speed multiplier for each round
     let startTime;
+    let startPageRotationInterval; // For start page arrow rotation
 
     helpBtn.onclick = () => modal.style.display = "flex";
     closeModal.onclick = () => modal.style.display = "none";
 
+    // Initialize start page arrow rotation
+    function initStartPageArrow() {
+      const startArrow = document.getElementById("start-arrow");
+      const startGhost = document.getElementById("start-ghost-arrow");
+      
+      if (!startArrow || !startGhost) return;
+
+      // Set arrow styles (same as main arrow)
+      const arrowHeight = 80;
+      const arrowWidth = 10;
+      startGhost.style.width = "0";
+      startGhost.style.height = "0";
+      startGhost.style.borderLeft = `${arrowWidth}px solid transparent`;
+      startGhost.style.borderRight = `${arrowWidth}px solid transparent`;
+      startGhost.style.borderBottom = `${arrowHeight}px solid rgba(255,255,255,0.25)`;
+      startGhost.style.transformOrigin = `${arrowWidth}px ${arrowHeight}px`;
+      startGhost.style.position = "absolute";
+      startGhost.style.top = `calc(50% - ${arrowHeight}px)`;
+      startGhost.style.left = `calc(50% - ${arrowWidth}px)`;
+      startGhost.style.filter = "drop-shadow(0 0 4px rgba(255, 255, 255, 0.3))";
+
+      startArrow.style.width = "0";
+      startArrow.style.height = "0";
+      startArrow.style.borderLeft = `${arrowWidth}px solid transparent`;
+      startArrow.style.borderRight = `${arrowWidth}px solid transparent`;
+      startArrow.style.borderBottom = `${arrowHeight}px solid #00ffff`;
+      startArrow.style.transformOrigin = `${arrowWidth}px ${arrowHeight}px`;
+      startArrow.style.position = "absolute";
+      startArrow.style.top = `calc(50% - ${arrowHeight}px)`;
+      startArrow.style.left = `calc(50% - ${arrowWidth}px)`;
+      startArrow.style.filter = "drop-shadow(0 0 8px rgba(0, 255, 255, 0.8))";
+
+      // Fast rotation (360 deg/sec)
+      const fastSpeed = 360; // deg/sec
+      let startPageAngle = 0;
+      const startPageStartTime = performance.now();
+
+      function rotateStartArrow() {
+        const delta = (performance.now() - startPageStartTime) / 1000;
+        startPageAngle = (delta * fastSpeed) % 360;
+        startArrow.style.transform = `rotate(${startPageAngle}deg)`;
+        startPageRotationInterval = requestAnimationFrame(rotateStartArrow);
+      }
+
+      startPageRotationInterval = requestAnimationFrame(rotateStartArrow);
+    }
+
+    // Start arrow rotation when page loads
+    window.addEventListener('load', () => {
+      setTimeout(initStartPageArrow, 100);
+    });
+
     function startGame() {
+      // Stop start page rotation
+      if (startPageRotationInterval) {
+        cancelAnimationFrame(startPageRotationInterval);
+        startPageRotationInterval = null;
+      }
+      
       round = 0;
       score = 0;
-      speedMultiplier = 1.0;
+      speedMultiplier = 3.0;
       
       // Create 3 sections layout
       gameArea.innerHTML = `
         <div class="round-section inactive" id="speed-config-section">
-          <h3>1. 배속 설정</h3>
+          <h3>1. Speed Setup</h3>
           <div id="speed-config-content"></div>
         </div>
         <div class="round-section inactive" id="game-section">
-          <h3>2. 게임</h3>
-          <div id="game-content"><p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">배속 설정 후 시작</p></div>
+          <h3>2. Game</h3>
+          <div id="game-content"><p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">Start after setting speed</p></div>
         </div>
         <div class="round-section inactive" id="result-section">
-          <h3>3. 라운드 결과</h3>
-          <div id="result-content"><p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">게임 완료 후 표시</p></div>
+          <h3>3. Round Result</h3>
+          <div id="result-content"><p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">Shown after the game ends</p></div>
         </div>
       `;
       
@@ -373,6 +439,11 @@
       return Math.round(90 * multiplier);
     }
 
+    function calculateMinScore(multiplier) {
+      // Worst case (180° error) gives -90 points, multiplied by speed multiplier
+      return Math.round(-90 * multiplier);
+    }
+
     function showSpeedConfig(callback) {
       const initialMultiplier = speedMultiplier;
       let currentMultiplier = initialMultiplier;
@@ -384,11 +455,12 @@
       speedContent.innerHTML = `
         <div style="margin-bottom: 15px;">
           <p style="margin: 5px 0; font-size: 14px;">Round ${round}/5</p>
-          <p style="margin: 5px 0; font-size: 14px;">현재 스코어: <span style="color: #00ffff; font-weight: bold;">${score}</span></p>
-          <p style="margin: 5px 0; font-size: 12px; color: #00ffff;" id="expected-score">예상 최대 획득: <span style="font-weight: bold;">${calculateMaxScore(currentMultiplier)}</span> (완벽한 각도 정확도 시)</p>
+          <p style="margin: 5px 0; font-size: 14px;">Current Score: <span style="color: #00ffff; font-weight: bold;">${score}</span></p>
+          <p style="margin: 5px 0; font-size: 12px; color: #00ffff;" id="expected-score">Expected Max Gain: <span style="font-weight: bold;">${calculateMaxScore(currentMultiplier)}</span> (with perfect angle accuracy)</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #ff6666;" id="expected-min-score">Expected Min Gain: <span style="font-weight: bold;">${calculateMinScore(currentMultiplier)}</span> (at 180° error)</p>
         </div>
         <div style="margin: 15px 0;">
-          <p style="text-align: center; margin-bottom: 10px; color: #00ffff; font-size: 13px;">속도 미리보기</p>
+          <p style="text-align: center; margin-bottom: 10px; color: #00ffff; font-size: 13px;">Speed Preview</p>
           <div class="arrow-container" style="margin: 0 auto; width: 150px; height: 150px;">
             <div id="preview-ghost-arrow"></div>
             <div id="preview-arrow"></div>
@@ -396,12 +468,12 @@
           <p id="preview-speed-info" style="text-align: center; font-size: 11px; color: rgba(0, 255, 255, 0.7); margin-top: 10px;">${(120 * currentMultiplier).toFixed(0)} deg/sec</p>
         </div>
         <div id="speed-value" style="font-size: 20px;">${currentMultiplier.toFixed(1)}x</div>
-        <input type="range" id="speed-slider" min="0.5" max="3.0" step="0.1" value="${initialMultiplier}" style="margin: 10px 0;">
+        <input type="range" id="speed-slider" min="3" max="10" step="0.1" value="${initialMultiplier}" style="margin: 10px 0;">
         <div id="speed-info" style="font-size: 12px;">
-          <p>0.5x (느림) ~ 3.0x (매우 빠름)</p>
-          <p style="font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-top: 5px;">※ 배속이 높을수록 더 많은 점수를 획득</p>
+          <p>3x (slow) ~ 10x (very fast)</p>
+          <p style="font-size: 11px; color: rgba(255, 255, 255, 0.6); margin-top: 5px;">Higher speed yields more points</p>
         </div>
-        <button id="confirm-speed-btn" style="margin-top: 15px; padding: 10px 20px; font-size: 14px;">설정 완료</button>
+        <button id="confirm-speed-btn" style="margin-top: 15px; padding: 10px 20px; font-size: 14px;">Confirm</button>
       `;
 
       const previewArrow = document.getElementById("preview-arrow");
@@ -410,6 +482,7 @@
       const slider = document.getElementById("speed-slider");
       const speedValue = document.getElementById("speed-value");
       const expectedScore = document.getElementById("expected-score");
+      const expectedMinScore = document.getElementById("expected-min-score");
       const confirmBtn = document.getElementById("confirm-speed-btn");
 
       // Set preview arrow styles (smaller for preview)
@@ -464,7 +537,9 @@
         currentMultiplier = parseFloat(slider.value);
         speedValue.textContent = currentMultiplier.toFixed(1) + "x";
         const maxScore = calculateMaxScore(currentMultiplier);
-        expectedScore.innerHTML = `예상 최대 획득: <span style="font-weight: bold;">${maxScore}</span> (완벽한 각도 정확도 시)`;
+        const minScore = calculateMinScore(currentMultiplier);
+        expectedScore.innerHTML = `Expected Max Gain: <span style="font-weight: bold;">${maxScore}</span> (with perfect angle accuracy)`;
+        expectedMinScore.innerHTML = `Expected Min Gain: <span style="font-weight: bold;">${minScore}</span> (at 180° error)`;
         previewStartTime = performance.now();
         updatePreview();
       };
@@ -482,8 +557,8 @@
       gameContent.innerHTML = `
         <div style="margin-bottom: 10px;">
           <p style="margin: 5px 0; font-size: 14px;">Round ${round}/5</p>
-          <p style="margin: 5px 0; font-size: 12px; color: #00ffff;">속도: ${rotationSpeed.toFixed(0)} deg/sec (${speedMultiplier.toFixed(1)}x 배속)</p>
-          <p style="margin: 5px 0; font-size: 11px; color: rgba(0, 255, 255, 0.7);">최대 획득 가능: ${calculateMaxScore(speedMultiplier)}점</p>
+          <p style="margin: 5px 0; font-size: 12px; color: #00ffff;">Speed: ${rotationSpeed.toFixed(0)} deg/sec (${speedMultiplier.toFixed(1)}x)</p>
+          <p style="margin: 5px 0; font-size: 11px; color: rgba(0, 255, 255, 0.7);">Max possible: ${calculateMaxScore(speedMultiplier)} pts</p>
         </div>
         <div class="arrow-container" style="margin: 15px auto; width: 150px; height: 150px;">
           <div id="ghost-arrow"></div>
@@ -493,7 +568,7 @@
       `;
 
       // Clear result section
-      document.getElementById("result-content").innerHTML = '<p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">게임을 시작하세요</p>';
+      document.getElementById("result-content").innerHTML = '<p style="color: rgba(255,255,255,0.5); text-align: center; margin-top: 50px;">Start the game</p>';
 
       // Set active section
       setActiveSection("game-section");
@@ -536,8 +611,23 @@
         // start rotation after showing startAngle briefly
         isRunning = true;
         startTime = performance.now();
+
+        // Disable stop button for 3 seconds with countdown
         stopBtn.disabled = true;
-        setTimeout(() => stopBtn.disabled = false, 5000);
+        let remaining = 3;
+        stopBtn.textContent = `Stop (${remaining})`;
+        const countdownInterval = setInterval(() => {
+          remaining -= 1;
+          if (remaining > 0) {
+            stopBtn.textContent = `Stop (${remaining})`;
+          }
+        }, 1000);
+
+        setTimeout(() => {
+          clearInterval(countdownInterval);
+          stopBtn.disabled = false;
+          stopBtn.textContent = 'Stop';
+        }, 3000);
       }, 1000);
 
       interval = requestAnimationFrame(function rotateArrow(ts) {
@@ -599,15 +689,15 @@
             </div>
           </div>
           <div style="margin-top: 15px; font-size: 13px;">
-            <p style="margin: 8px 0;">목표 각도: <span style="color: #00ffff; font-weight: bold;">${Math.round(startAngle)}°</span></p>
-            <p style="margin: 8px 0;">선택한 각도: <span style="color: #00ffff; font-weight: bold;">${Math.round(currentAngle)}°</span></p>
-            <p style="margin: 8px 0;">각도 차이: <span style="color: #00ffff; font-weight: bold;">${Math.round(error)}°</span></p>
+            <p style="margin: 8px 0;">Target Angle: <span style="color: #00ffff; font-weight: bold;">${Math.round(startAngle)}°</span></p>
+            <p style="margin: 8px 0;">Chosen Angle: <span style="color: #00ffff; font-weight: bold;">${Math.round(currentAngle)}°</span></p>
+            <p style="margin: 8px 0;">Angle Error: <span style="color: #00ffff; font-weight: bold;">${Math.round(error)}°</span></p>
             <p style="margin: 12px 0; font-size: 16px; color: ${roundScore >= 0 ? '#00ff00' : '#ff0000'};">
-              획득 점수: <span style="font-weight: bold;">${roundScore >= 0 ? '+' : ''}${Math.round(roundScore)}</span>
+              Round Score: <span style="font-weight: bold;">${roundScore >= 0 ? '+' : ''}${Math.round(roundScore)}</span>
             </p>
-            <p style="margin: 12px 0 5px 0; font-size: 14px;">총 스코어: <span style="color: #00ffff; font-weight: bold;">${score}</span></p>
+            <p style="margin: 12px 0 5px 0; font-size: 14px;">Total Score: <span style="color: #00ffff; font-weight: bold;">${score}</span></p>
           </div>
-          <button id="continue-btn" style="margin-top: 15px; padding: 10px 20px; font-size: 14px;">다음 라운드</button>
+          <button id="continue-btn" style="margin-top: 15px; padding: 10px 20px; font-size: 14px;">Next Round</button>
         `;
 
         // Set active section
