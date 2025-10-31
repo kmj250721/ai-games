@@ -42,6 +42,76 @@
       text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
     }
 
+    /* HUD: round/score top bar */
+    #hud {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 12px 16px;
+      border: 2px solid rgba(0, 255, 255, 0.3);
+      border-radius: 12px;
+      background: rgba(0, 20, 35, 0.5);
+      box-shadow: inset 0 0 10px rgba(0, 255, 255, 0.1);
+    }
+
+    #hud .hud-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #round-label {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    #round-dots {
+      display: flex;
+      gap: 8px;
+    }
+
+    .round-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #00ffff;
+      background: transparent;
+      box-shadow: 0 0 6px rgba(0, 255, 255, 0.5);
+    }
+
+    .round-dot.completed {
+      background: #00ffff;
+    }
+
+    .round-dot.current {
+      background: #00ccff;
+      box-shadow: 0 0 10px rgba(0, 204, 255, 0.9);
+      transform: scale(1.1);
+    }
+
+    #hud .hud-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #score-label {
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      letter-spacing: 0.5px;
+    }
+
+    #score-value {
+      min-width: 80px;
+      text-align: right;
+      font-size: 24px;
+      font-weight: 800;
+      color: #00ffff;
+      text-shadow: 0 0 12px rgba(0, 255, 255, 0.7);
+    }
+
     #help-btn {
       position: absolute;
       top: 20px;
@@ -295,6 +365,17 @@
     <h1 id="title">Spin Accuracy Game</h1>
     <div id="help-btn">?</div>
 
+    <div id="hud" style="display: none;">
+      <div class="hud-left">
+        <span id="round-label">Round</span>
+        <div id="round-dots"></div>
+      </div>
+      <div class="hud-right">
+        <span id="score-label">Score</span>
+        <div id="score-value">0</div>
+      </div>
+    </div>
+
     <div id="game-area">
       <div style="display: flex; flex-direction: column; align-items: center; width: 100%;">
         <div class="arrow-container" style="margin: 20px auto; width: 200px; height: 200px;">
@@ -336,6 +417,27 @@
 
     helpBtn.onclick = () => modal.style.display = "flex";
     closeModal.onclick = () => modal.style.display = "none";
+
+    // HUD helpers
+    function renderRoundDots(currentRound) {
+      const dotsEl = document.getElementById('round-dots');
+      if (!dotsEl) return;
+      const total = 5;
+      const parts = [];
+      for (let i = 1; i <= total; i++) {
+        const classes = ['round-dot'];
+        if (i < currentRound) classes.push('completed');
+        if (i === currentRound) classes.push('current');
+        parts.push(`<span class="${classes.join(' ')}"></span>`);
+      }
+      dotsEl.innerHTML = parts.join('');
+    }
+
+    function updateHUD() {
+      const scoreEl = document.getElementById('score-value');
+      if (scoreEl) scoreEl.textContent = String(score);
+      renderRoundDots(Math.max(1, Math.min(5, round || 1)));
+    }
 
     // Initialize start page arrow rotation
     function initStartPageArrow() {
@@ -396,9 +498,14 @@
         startPageRotationInterval = null;
       }
       
+      // Show HUD when game starts
+      const hud = document.getElementById('hud');
+      if (hud) hud.style.display = 'flex';
+
       round = 0;
       score = 0;
       speedMultiplier = 3.0;
+      updateHUD();
       
       // Create 3 sections layout
       gameArea.innerHTML = `
@@ -453,11 +560,13 @@
 
       const speedContent = document.getElementById("speed-config-content");
       speedContent.innerHTML = `
-        <div style="margin-bottom: 15px;">
-          <p style="margin: 5px 0; font-size: 14px;">Round ${round}/5</p>
-          <p style="margin: 5px 0; font-size: 14px;">Current Score: <span style="color: #00ffff; font-weight: bold;">${score}</span></p>
-          <p style="margin: 5px 0; font-size: 12px; color: #00ffff;" id="expected-score">Expected Max Gain: <span style="font-weight: bold;">${calculateMaxScore(currentMultiplier)}</span> (with perfect angle accuracy)</p>
-          <p style="margin: 5px 0; font-size: 12px; color: #ff6666;" id="expected-min-score">Expected Min Gain: <span style="font-weight: bold;">${calculateMinScore(currentMultiplier)}</span> (at 180° error)</p>
+          <div style="margin-top: 10px;">
+            <p style="text-align: center; margin: 6px 0 10px 0; color: rgba(255,255,255,0.85); font-size: 13px;">Score after this round</p>
+            <div style="display: flex; gap: 12px; align-items: stretch; justify-content: center;">
+              <p id="after-round-max" style="flex: 1; margin: 0; font-size: 18px; color: #00ff9d; font-weight: 800; background: rgba(0,255,157,0.1); border: 2px solid rgba(0,255,157,0.35); border-radius: 10px; padding: 10px 12px; text-align: center;">Max: <span style="font-weight: 900;">${score + calculateMaxScore(currentMultiplier)}</span></p>
+              <p id="after-round-min" style="flex: 1; margin: 0; font-size: 18px; color: #ff7a7a; font-weight: 800; background: rgba(255,0,0,0.06); border: 2px solid rgba(255,102,102,0.35); border-radius: 10px; padding: 10px 12px; text-align: center;">Min: <span style="font-weight: 900;">${score + calculateMinScore(currentMultiplier)}</span></p>
+            </div>
+          </div>
         </div>
         <div style="margin: 15px 0;">
           <p style="text-align: center; margin-bottom: 10px; color: #00ffff; font-size: 13px;">Speed Preview</p>
@@ -481,8 +590,8 @@
       const previewSpeedInfo = document.getElementById("preview-speed-info");
       const slider = document.getElementById("speed-slider");
       const speedValue = document.getElementById("speed-value");
-      const expectedScore = document.getElementById("expected-score");
-      const expectedMinScore = document.getElementById("expected-min-score");
+      const afterRoundMaxEl = document.getElementById("after-round-max");
+      const afterRoundMinEl = document.getElementById("after-round-min");
       const confirmBtn = document.getElementById("confirm-speed-btn");
 
       // Set preview arrow styles (smaller for preview)
@@ -538,8 +647,8 @@
         speedValue.textContent = currentMultiplier.toFixed(1) + "x";
         const maxScore = calculateMaxScore(currentMultiplier);
         const minScore = calculateMinScore(currentMultiplier);
-        expectedScore.innerHTML = `Expected Max Gain: <span style="font-weight: bold;">${maxScore}</span> (with perfect angle accuracy)`;
-        expectedMinScore.innerHTML = `Expected Min Gain: <span style="font-weight: bold;">${minScore}</span> (at 180° error)`;
+        if (afterRoundMaxEl) afterRoundMaxEl.innerHTML = `Max: <span style=\"font-weight: 900;\">${score + maxScore}</span>`;
+        if (afterRoundMinEl) afterRoundMinEl.innerHTML = `Min: <span style=\"font-weight: 900;\">${score + minScore}</span>`;
         previewStartTime = performance.now();
         updatePreview();
       };
@@ -639,6 +748,7 @@
           requestAnimationFrame(rotateArrow);
         } else {
           score -= Math.round(90 * speedMultiplier);
+          updateHUD();
           nextRound();
         }
       });
@@ -652,6 +762,7 @@
         if (error <= 90) roundScore = (90 - error) * speedMultiplier;
         else roundScore = -(error - 90) * speedMultiplier;
         score += Math.round(roundScore);
+        updateHUD();
 
         // Show result in result section
         const arrowHeight = 60;
@@ -712,6 +823,7 @@
       if (round > 5) return endGame();
 
       // Show speed configuration before each round
+      updateHUD();
       setActiveSection("speed-config-section");
       showSpeedConfig(startRound);
     }
